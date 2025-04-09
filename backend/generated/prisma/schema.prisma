@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Clinic {
+  id                  String    @id @default(cuid())
+  name                String    @unique // Clinic names should be unique
+  address             String? // Optional address
+  phone               String? // Optional phone
+  isActive            Boolean   @default(false) // Subscription status
+  subscriptionEndDate DateTime? // Subscription end date
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relation: A clinic can have many users
+  users User[]
+  // Add other relations later (Owners, Pets, Visits)
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String // Store hashed password
+  firstName String?
+  lastName  String?
+  role      UserRole @default(STAFF) // Enum for roles
+  isActive  Boolean  @default(true) // User account status (different from clinic subscription)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relation: Each user belongs to exactly one clinic
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade) // If clinic deleted, delete user
+
+  @@index([clinicId]) // Index for faster lookups by clinic
+}
+
+enum UserRole {
+  ADMIN // Platform Admin (can manage clinics) - Might need separate handling or flag later
+  STAFF // Regular Vet/Staff user
+}
+
+// Add Owner, Pet, Visit models later
