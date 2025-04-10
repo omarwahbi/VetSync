@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -25,8 +24,9 @@ model Clinic {
   updatedAt           DateTime  @updatedAt
 
   // Relation: A clinic can have many users
-  users User[]
-  // Add other relations later (Owners, Pets, Visits)
+  users  User[]
+  // Relation: A clinic can have many owners
+  owners Owner[]
 }
 
 model User {
@@ -52,4 +52,61 @@ enum UserRole {
   STAFF // Regular Vet/Staff user
 }
 
-// Add Owner, Pet, Visit models later
+model Owner {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relation: Each owner belongs to exactly one clinic
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade) // If clinic deleted, delete owner
+
+  // Relation: An owner can have many pets
+  pets Pet[]
+
+  @@index([clinicId]) // Index for faster lookups by clinic
+}
+
+model Pet {
+  id        String    @id @default(cuid())
+  name      String
+  species   String?
+  breed     String?
+  dob       DateTime?
+  gender    String?
+  color     String?
+  notes     String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relation: Each pet belongs to exactly one owner
+  ownerId String
+  owner   Owner  @relation(fields: [ownerId], references: [id], onDelete: Cascade) // If owner deleted, delete pet
+
+  // Relation: A pet can have many visits
+  visits Visit[]
+
+  @@index([ownerId]) // Index for faster lookups by owner
+}
+
+model Visit {
+  id               String    @id @default(cuid())
+  visitDate        DateTime  @default(now())
+  visitType        String
+  notes            String?   @db.Text
+  nextReminderDate DateTime?
+  reminderSent     Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relation: Each visit belongs to exactly one pet
+  petId String
+  pet   Pet    @relation(fields: [petId], references: [id], onDelete: Cascade) // If pet deleted, delete visit
+
+  @@index([petId]) // Index for faster lookups by pet
+  @@index([nextReminderDate]) // Index for efficient querying of reminders
+}

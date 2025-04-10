@@ -2,18 +2,31 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
+/**
+ * Extending the PrismaClient for use in NestJS
+ * This makes the PrismaClient available as a service throughout the application
+ */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  constructor() {
+    super();
+  }
+
   async onModuleInit() {
-    // Optional: Connect explicitly on module initialization
+    // Connect to the database on module initialization
     await this.$connect();
   }
 
   async onModuleDestroy() {
-    // Ensure disconnection on module destruction
+    // Disconnect from the database on module destruction
     await this.$disconnect();
   }
 
-  // Optional: Add custom methods or logic if needed, e.g., for clean shutdowns
-  // async enableShutdownHooks(app: INestApplication) { ... }
+  // Method to enable shutdown hooks for graceful shutdowns
+  // Can be used in main.ts if needed
+  // async enableShutdownHooks(app: INestApplication) {
+  //   this.$on('beforeExit', async () => {
+  //     await app.close();
+  //   });
+  // }
 }
