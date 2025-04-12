@@ -4,10 +4,10 @@ services:
     image: postgres:15
     container_name: vet_clinic_db
     restart: always
-    environment:
-      POSTGRES_USER: petwell
-      POSTGRES_PASSWORD: Omarwahbi97
-      POSTGRES_DB: petwellDB
+   environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
