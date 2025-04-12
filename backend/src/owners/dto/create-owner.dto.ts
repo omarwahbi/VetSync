@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsBoolean, ValidateIf } from 'class-validator';
 
 export class CreateOwnerDto {
   @IsString()
@@ -10,10 +10,14 @@ export class CreateOwnerDto {
   lastName: string;
 
   @IsString()
-  @IsOptional()
-  phone?: string;
+  @IsNotEmpty()
+  phone: string;
 
-  @IsEmail()
-  @IsOptional()
+  @ValidateIf((o) => o.email !== undefined && o.email !== '')
+  @IsEmail({}, { message: 'If provided, email must be valid' })
   email?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  allowAutomatedReminders?: boolean;
 }

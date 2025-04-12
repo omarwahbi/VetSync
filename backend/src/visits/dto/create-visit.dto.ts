@@ -1,4 +1,10 @@
-import { IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateVisitDto {
   @IsDateString()
@@ -16,4 +22,8 @@ export class CreateVisitDto {
   @IsDateString()
   @IsOptional()
   nextReminderDate?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isReminderEnabled?: boolean;
 }

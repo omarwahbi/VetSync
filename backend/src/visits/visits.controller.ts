@@ -8,12 +8,15 @@ import {
   Delete,
   Request,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { VisitsService } from './visits.service';
 import { CreateVisitDto } from './dto/create-visit.dto';
 import { UpdateVisitDto } from './dto/update-visit.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { FilterVisitDto } from './dto/filter-visit.dto';
 
+// Controller for visits under a specific pet
 @Controller('pets/:petId/visits')
 @UseGuards(JwtAuthGuard)
 export class VisitsController {
@@ -59,5 +62,25 @@ export class VisitsController {
     @Request() req: { user: any },
   ) {
     return this.visitsService.remove(id, petId, req.user);
+  }
+}
+
+// Controller for general visits endpoints
+@Controller('visits')
+@UseGuards(JwtAuthGuard)
+export class VisitsGlobalController {
+  constructor(private readonly visitsService: VisitsService) {}
+
+  @Get('upcoming')
+  findUpcoming(@Request() req: { user: any }) {
+    return this.visitsService.findUpcoming(req.user);
+  }
+
+  @Get('all')
+  findAllClinicVisits(
+    @Request() req: { user: any },
+    @Query() filterDto: FilterVisitDto,
+  ) {
+    return this.visitsService.findAllClinicVisits(req.user, filterDto);
   }
 }

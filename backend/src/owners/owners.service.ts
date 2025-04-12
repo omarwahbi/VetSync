@@ -8,9 +8,17 @@ export class OwnersService {
   constructor(private prisma: PrismaService) {}
 
   async create(createOwnerDto: CreateOwnerDto, user: { clinicId: string }) {
+    // Process the data to handle empty email values
+    const ownerData = { ...createOwnerDto };
+    
+    // If email is empty string, set it to undefined (which Prisma will store as NULL in DB)
+    if (ownerData.email === '') {
+      ownerData.email = undefined;
+    }
+    
     return this.prisma.owner.create({
       data: {
-        ...createOwnerDto,
+        ...ownerData,
         clinicId: user.clinicId,
       },
     });
@@ -41,10 +49,18 @@ export class OwnersService {
     // First verify the owner exists and belongs to the user's clinic
     await this.findOne(id, user);
 
+    // Process the data to handle empty email values
+    const ownerData = { ...updateOwnerDto };
+    
+    // If email is empty string, set it to undefined (which Prisma will store as NULL in DB)
+    if (ownerData.email === '') {
+      ownerData.email = undefined;
+    }
+
     // If findOne didn't throw, proceed with update
     return this.prisma.owner.update({
       where: { id },
-      data: updateOwnerDto,
+      data: ownerData,
     });
   }
 

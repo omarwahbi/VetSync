@@ -53,13 +53,14 @@ enum UserRole {
 }
 
 model Owner {
-  id        String   @id @default(cuid())
-  firstName String
-  lastName  String
-  phone     String?
-  email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  firstName               String
+  lastName                String
+  phone                   String
+  email                   String?
+  allowAutomatedReminders Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   // Relation: Each owner belongs to exactly one clinic
   clinicId String
@@ -94,14 +95,15 @@ model Pet {
 }
 
 model Visit {
-  id               String    @id @default(cuid())
-  visitDate        DateTime  @default(now())
-  visitType        String
-  notes            String?   @db.Text
-  nextReminderDate DateTime?
-  reminderSent     Boolean   @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  visitDate         DateTime  @default(now())
+  visitType         String
+  notes             String?   @db.Text
+  nextReminderDate  DateTime?
+  reminderSent      Boolean   @default(false)
+  isReminderEnabled Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Relation: Each visit belongs to exactly one pet
   petId String
