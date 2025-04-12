@@ -92,6 +92,7 @@ interface Visit {
       id: string;
       firstName: string;
       lastName: string;
+      allowAutomatedReminders: boolean;
     };
   };
 }
@@ -680,13 +681,22 @@ export default function VisitsPage() {
               initialData={{
                 id: editingVisit.id,
                 petId: editingVisit.pet.id,
-                visitDate: editingVisit.visitDate,
+                visitDate: new Date(editingVisit.visitDate),
                 visitType: editingVisit.visitType,
                 notes: editingVisit.notes,
-                nextReminderDate: editingVisit.nextReminderDate || undefined,
+                nextReminderDate: editingVisit.nextReminderDate
+                  ? new Date(editingVisit.nextReminderDate)
+                  : undefined,
                 isReminderEnabled: editingVisit.isReminderEnabled,
-                createdAt: "",
-                updatedAt: "",
+                pet: {
+                  id: editingVisit.pet.id,
+                  name: editingVisit.pet.name,
+                  owner: {
+                    id: editingVisit.pet.owner.id,
+                    allowAutomatedReminders:
+                      editingVisit.pet.owner.allowAutomatedReminders,
+                  },
+                },
               }}
               onSubmit={handleUpdateVisit}
               onClose={() => setIsEditDialogOpen(false)}

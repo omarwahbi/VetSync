@@ -64,6 +64,13 @@ interface Visit {
   initialFormData?: VisitFormValues;
 }
 
+interface Owner {
+  id: string;
+  firstName: string;
+  lastName: string;
+  allowAutomatedReminders: boolean;
+}
+
 interface Pet {
   id: string;
   name: string;
@@ -73,6 +80,7 @@ interface Pet {
   gender?: string;
   ownerId: string;
   notes?: string;
+  owner?: Owner;
 }
 
 // Type definition for API error response
@@ -98,7 +106,16 @@ const fetchPet = async (petId: string): Promise<Pet> => {
       const petResponse = await axiosInstance.get(
         `/owners/${owner.id}/pets/${petId}`
       );
-      return petResponse.data;
+      // Add owner to the pet data for access to allowAutomatedReminders
+      return {
+        ...petResponse.data,
+        owner: {
+          id: owner.id,
+          firstName: owner.firstName,
+          lastName: owner.lastName,
+          allowAutomatedReminders: owner.allowAutomatedReminders,
+        },
+      };
     } catch {
       // Continue searching if pet not found with this owner
       continue;
@@ -358,6 +375,7 @@ export default function PetVisitsPage() {
                 onSubmit={handleCreateVisit}
                 onClose={() => setIsVisitDialogOpen(false)}
                 isLoading={isCreatingVisit}
+                selectedPetData={pet}
               />
             </DialogContent>
           </Dialog>
@@ -399,7 +417,7 @@ export default function PetVisitsPage() {
                         {formatDate(visit.visitDate)}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="">
                       <Badge
                         variant="outline"
                         className={getVisitTypeBadgeColor(visit.visitType)}
@@ -475,12 +493,25 @@ export default function PetVisitsPage() {
               Update the visit information
             </DialogDescription>
           </DialogHeader>
-          {editingVisit && (
+          {editingVisit && editingVisit.initialFormData && (
             <VisitForm
-              initialData={editingVisit.initialFormData}
+              initialData={{
+                ...editingVisit.initialFormData,
+                visitDate: editingVisit.initialFormData.visitDate,
+                visitType: editingVisit.initialFormData.visitType,
+                isReminderEnabled:
+                  editingVisit.initialFormData.isReminderEnabled,
+                notes: editingVisit.initialFormData.notes,
+                nextReminderDate: editingVisit.initialFormData.nextReminderDate,
+                pet: {
+                  id: petId,
+                  owner: pet?.owner,
+                },
+              }}
               onSubmit={handleUpdateVisit}
               onClose={() => setIsEditDialogOpen(false)}
               isLoading={isUpdatingVisit}
+              selectedPetData={pet}
             />
           )}
         </DialogContent>
