@@ -8,12 +8,15 @@ import {
   Edit,
   Trash2,
   ClipboardList,
+  Search,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axios";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AxiosError } from "axios";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 import {
   Dialog,
@@ -52,6 +55,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PetForm, PetFormValues } from "@/components/forms/pet-form";
+import { Input } from "@/components/ui/input";
 
 interface Owner {
   id: string;
@@ -86,31 +90,18 @@ const fetchOwners = async (): Promise<Owner[]> => {
 };
 
 // Function to fetch all pets across all owners
-const fetchAllPets = async (): Promise<Pet[]> => {
-  // Get all owners first
-  const ownersResponse = await axiosInstance.get("/owners");
-  const owners = ownersResponse.data;
-
-  // Fetch pets for each owner and flatten the array
-  const petsPromises = owners.map(async (owner: Owner) => {
-    const petsResponse = await axiosInstance.get(`/owners/${owner.id}/pets`);
-    const pets = petsResponse.data;
-
-    // Add owner information to each pet
-    return pets.map((pet: Pet) => ({
-      ...pet,
-      owner: {
-        id: owner.id,
-        firstName: owner.firstName,
-        lastName: owner.lastName,
-        email: owner.email,
-        phone: owner.phone,
-      },
-    }));
+const fetchAllPets = async (searchTerm?: string): Promise<Pet[]> => {
+  const params: { search?: string } = { search: searchTerm || undefined };
+  // Remove undefined params before sending
+  Object.keys(params).forEach((key) => {
+    if (params[key as keyof typeof params] === undefined) {
+      delete params[key as keyof typeof params];
+    }
   });
 
-  const petsArrays = await Promise.all(petsPromises);
-  return petsArrays.flat();
+  // Use the direct pets endpoint with search capability
+  const response = await axiosInstance.get("/pets", { params });
+  return response.data;
 };
 
 export default function PetsPage() {
@@ -118,7 +109,11 @@ export default function PetsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
   const [deletingPet, setDeletingPet] = useState<Pet | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
+
+  // Debounce search term to prevent too many requests
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Query for fetching all owners (needed for the pet form)
   const { data: owners = [], isLoading: isLoadingOwners } = useQuery({
@@ -133,8 +128,8 @@ export default function PetsPage() {
     error: petsError,
     isError: isPetsError,
   } = useQuery({
-    queryKey: ["all-pets"],
-    queryFn: fetchAllPets,
+    queryKey: ["all-pets", debouncedSearchTerm],
+    queryFn: () => fetchAllPets(debouncedSearchTerm),
   });
 
   // Function for creating a new pet
@@ -322,40 +317,55 @@ export default function PetsPage() {
     <div className="space-y-4">
       <Card className="bg-white">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl">Manage Pets</CardTitle>
+          <CardTitle className="text-xl">All Pets</CardTitle>
           <Dialog open={isPetDialogOpen} onOpenChange={setIsPetDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                variant="default"
-                size="sm"
-                className="flex items-center gap-1"
-                disabled={isNewPetButtonDisabled}
-              >
+              <Button size="sm" className="flex items-center gap-1">
                 <Plus className="h-4 w-4" />
-                New Pet
+                Add Pet
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
-              <DialogHeader className="pb-4">
-                <DialogTitle className="text-xl font-bold">
-                  Add New Pet
-                </DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground">
-                  Fill in the details to add a new pet
-                </DialogDescription>
+              <DialogHeader className="pb-2">
+                <DialogTitle className="text-xl">Add New Pet</DialogTitle>
               </DialogHeader>
-              {owners && (
-                <PetForm
-                  onSubmit={handleCreatePet}
-                  onClose={() => setIsPetDialogOpen(false)}
-                  owners={owners}
-                  isLoading={isCreatingPet}
-                />
-              )}
+              <PetForm
+                owners={owners}
+                onSubmit={handleCreatePet}
+                onClose={() => setIsPetDialogOpen(false)}
+                isLoading={isCreatingPet || isLoadingOwners}
+              />
             </DialogContent>
           </Dialog>
         </CardHeader>
         <CardContent className="p-0">
+          {/* Search input */}
+          <div className="px-6 py-4">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search pets by name, species, owner..."
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(e.target.value)
+                }
+                className="pl-8 pr-10"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-0"
+                  onClick={() => setSearchTerm("")}
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Clear search</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
           {isLoadingPets ? (
             <div className="flex justify-center py-8">
               <LoadingSpinner size="md" text="Loading pets..." />

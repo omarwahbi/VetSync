@@ -2,7 +2,7 @@
 
 import { useAuthStore } from "@/store/auth";
 import { useRouter } from "next/navigation";
-import { Menu, User, LogOut } from "lucide-react";
+import { Menu, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -29,6 +29,10 @@ export function Header() {
   const handleLogout = () => {
     logout();
     router.push("/login");
+  };
+
+  const handleClinicProfileClick = () => {
+    router.push("/clinic-profile");
   };
 
   // Get user initials for avatar
@@ -74,9 +78,13 @@ export function Header() {
             <DropdownMenuLabel className="font-normal" inset={false}>
               {user ? `${user.firstName} ${user.lastName}` : "My Account"}
             </DropdownMenuLabel>
-            <DropdownMenuItem className="cursor-pointer" inset={false}>
-              <User className="mr-2 h-4 w-4" />
-              Profile
+            <DropdownMenuItem
+              className="cursor-pointer"
+              inset={false}
+              onClick={handleClinicProfileClick}
+            >
+              <Building2 className="mr-2 h-4 w-4" />
+              Clinic Profile
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem

@@ -3,7 +3,7 @@
 import { useAuthStore } from "@/store/auth";
 import { useQuery } from "@tanstack/react-query";
 import { format, isToday } from "date-fns";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Users, PawPrint } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -33,6 +33,17 @@ interface UpcomingVisit {
   visitType: string;
 }
 
+// Function to fetch dashboard stats
+const fetchDashboardStats = async () => {
+  const response = await axiosInstance.get("/dashboard/stats");
+  return response.data as {
+    ownerCount: number;
+    petCount: number;
+    upcomingVaccinationCount: number;
+    isAdminView: boolean;
+  };
+};
+
 // Function to fetch upcoming visits
 const fetchUpcomingVisits = async (): Promise<UpcomingVisit[]> => {
   const response = await axiosInstance.get("/visits/upcoming");
@@ -60,6 +71,16 @@ const getVisitTypeBadgeColor = (visitType: string) => {
 export default function DashboardPage() {
   const { user } = useAuthStore();
 
+  // Query for fetching dashboard stats
+  const {
+    data: stats,
+    isLoading: isLoadingStats,
+    isError: isErrorStats,
+  } = useQuery({
+    queryKey: ["dashboardStats"],
+    queryFn: fetchDashboardStats,
+  });
+
   // Query for fetching upcoming visits
   const {
     data: upcomingVisits = [],
@@ -76,6 +97,25 @@ export default function DashboardPage() {
     (visit) =>
       visit.nextReminderDate && isToday(new Date(visit.nextReminderDate))
   ).length;
+
+  // Prepare display values for stats
+  const ownerCountDisplay = isLoadingStats ? (
+    <LoadingSpinner size="sm" text="Loading owner count" />
+  ) : (
+    stats?.ownerCount ?? 0
+  );
+
+  const petCountDisplay = isLoadingStats ? (
+    <LoadingSpinner size="sm" text="Loading pet count" />
+  ) : (
+    stats?.petCount ?? 0
+  );
+
+  const upcomingVaccinationCountDisplay = isLoadingStats ? (
+    <LoadingSpinner size="sm" text="Loading vaccination count" />
+  ) : (
+    stats?.upcomingVaccinationCount ?? 0
+  );
 
   return (
     <div className="space-y-6">
@@ -96,20 +136,51 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Due Today</p>
         </div>
 
-        <div className="rounded-lg border bg-card p-6">
-          <div className="text-2xl font-bold">0</div>
-          <p className="text-muted-foreground">Registered Pets</p>
-        </div>
+        {/* Owner Count Card */}
+        <Card className="bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Owners</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="">
+            <div className="text-2xl font-bold">{ownerCountDisplay}</div>
+            {isErrorStats && (
+              <p className="text-xs text-red-500">Error loading stats</p>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border bg-card p-6">
-          <div className="text-2xl font-bold">0</div>
-          <p className="text-muted-foreground">Registered Owners</p>
-        </div>
+        {/* Pet Count Card */}
+        <Card className="bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Pets</CardTitle>
+            <PawPrint className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="">
+            <div className="text-2xl font-bold">{petCountDisplay}</div>
+            {isErrorStats && (
+              <p className="text-xs text-red-500">Error loading stats</p>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border bg-card p-6">
-          <div className="text-2xl font-bold">0</div>
-          <p className="text-muted-foreground">Upcoming Vaccinations</p>
-        </div>
+        {/* Upcoming Vaccinations Card */}
+        <Card className="bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Upcoming Vaccinations
+            </CardTitle>
+            <CalendarClock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="">
+            <div className="text-2xl font-bold">
+              {upcomingVaccinationCountDisplay}
+            </div>
+            {isErrorStats && (
+              <p className="text-xs text-red-500">Error loading stats</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Upcoming Visits & Reminders Section */}

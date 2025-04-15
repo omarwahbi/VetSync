@@ -2,10 +2,19 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Search,
+  X,
+} from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 import {
   Dialog,
@@ -43,6 +52,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { OwnerForm, OwnerFormValues } from "@/components/forms/owner-form";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 interface Owner {
   id: string;
@@ -59,8 +69,15 @@ interface ErrorResponse {
 }
 
 // Function to fetch owners from the backend
-const fetchOwners = async (): Promise<Owner[]> => {
-  const response = await axiosInstance.get("/owners");
+const fetchOwners = async (searchTerm?: string): Promise<Owner[]> => {
+  const params: { search?: string } = { search: searchTerm || undefined };
+  // Remove undefined params before sending
+  Object.keys(params).forEach((key) => {
+    if (params[key as keyof typeof params] === undefined) {
+      delete params[key as keyof typeof params];
+    }
+  });
+  const response = await axiosInstance.get("/owners", { params });
   return response.data;
 };
 
@@ -69,7 +86,11 @@ export default function OwnersPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | null>(null);
   const [deletingOwner, setDeletingOwner] = useState<Owner | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
+
+  // Debounce search term to prevent too many requests
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Query for fetching owners
   const {
@@ -78,8 +99,8 @@ export default function OwnersPage() {
     error,
     isError,
   } = useQuery({
-    queryKey: ["owners"],
-    queryFn: fetchOwners,
+    queryKey: ["owners", debouncedSearchTerm],
+    queryFn: () => fetchOwners(debouncedSearchTerm),
   });
 
   // Mutation for creating a new owner
@@ -224,6 +245,33 @@ export default function OwnersPage() {
           </Dialog>
         </CardHeader>
         <CardContent className="p-0">
+          {/* Search input */}
+          <div className="px-6 py-4">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search owners..."
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(e.target.value)
+                }
+                className="pl-8 pr-10"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-0"
+                  onClick={() => setSearchTerm("")}
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Clear search</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
