@@ -10,11 +10,11 @@ interface User {
 }
 
 interface AuthState {
-  token: string | null;
+  accessToken: string | null;
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  setToken: (token: string | null) => void;
+  setAccessToken: (accessToken: string | null) => void;
   setUser: (user: User | null) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
@@ -23,20 +23,20 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
+      accessToken: null,
       user: null,
       isAuthenticated: false,
       isLoading: true,
       
-      setToken: (token: string | null) => set(() => ({
-        token,
-        isAuthenticated: !!token,
+      setAccessToken: (accessToken: string | null) => set(() => ({
+        accessToken,
+        isAuthenticated: !!accessToken,
       })),
       
       setUser: (user: User | null) => set(() => ({ user })),
       
       logout: () => set(() => ({
-        token: null,
+        accessToken: null,
         user: null,
         isAuthenticated: false,
       })),
@@ -47,7 +47,7 @@ export const useAuthStore = create<AuthState>()(
       name: 'vet-auth-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        token: state.token,
+        accessToken: state.accessToken,
         user: state.user,
       }),
       onRehydrateStorage: () => (state, error) => {
@@ -62,7 +62,7 @@ export const useAuthStore = create<AuthState>()(
         
         if (state) {
           // Explicitly update authentication state based on token presence
-          state.isAuthenticated = !!state.token;
+          state.isAuthenticated = !!state.accessToken;
           // Set loading to false after rehydration is complete
           state.setLoading(false);
         }

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import axiosInstance from "@/lib/axios";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -48,9 +49,17 @@ export function Sidebar() {
   const router = useRouter();
   const isAdmin = user?.role === "ADMIN";
 
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      // Call the logout endpoint to invalidate the refresh token
+      await axiosInstance.post("/auth/logout");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    } finally {
+      // Clear local state regardless of server response
+      logout();
+      router.push("/login");
+    }
   };
 
   return (

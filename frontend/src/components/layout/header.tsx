@@ -22,14 +22,23 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sidebar } from "./sidebar";
 import { ThemeToggleButton } from "@/components/ui/theme-toggle-button";
+import axiosInstance from "@/lib/axios";
 
 export function Header() {
   const { logout, user } = useAuthStore();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      // Call the logout endpoint to invalidate the refresh token
+      await axiosInstance.post("/auth/logout");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    } finally {
+      // Clear local state regardless of server response
+      logout();
+      router.push("/login");
+    }
   };
 
   const handleClinicProfileClick = () => {

@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 
 import { useAuthStore } from "@/store/auth";
 import axiosInstance from "@/lib/axios";
@@ -46,7 +46,8 @@ interface ErrorResponse {
 export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const { setToken, setUser, isAuthenticated, isLoading } = useAuthStore();
+  const { setAccessToken, setUser, isAuthenticated, isLoading } =
+    useAuthStore();
 
   // Initialize form - MOVED BEFORE CONDITIONAL RETURN
   const form = useForm<LoginFormValues>({
@@ -69,19 +70,41 @@ export default function LoginPage() {
     return <LoadingSpinner fullScreen />;
   }
 
+  // Function to fetch user profile
+  const fetchAndSetUser = async () => {
+    try {
+      const response = await axiosInstance.get("/auth/profile");
+      const user = response.data;
+      setUser(user);
+      return true;
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      toast.error("Failed to load user profile");
+      return false;
+    }
+  };
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
 
     try {
       const response = await axiosInstance.post("/auth/login", data);
-      const { access_token, user } = response.data;
+      const { access_token } = response.data;
 
-      // Update auth store
-      setToken(access_token);
-      setUser(user);
+      // Update auth store with access token
+      setAccessToken(access_token);
 
-      toast.success("Login successful");
-      router.push("/dashboard");
+      // Fetch and set user data
+      const profileSuccess = await fetchAndSetUser();
+
+      if (profileSuccess) {
+        toast.success("Login successful");
+        router.push("/dashboard");
+      } else {
+        // If profile fetch fails, clear the token
+        setAccessToken(null);
+        toast.error("Could not get user profile");
+      }
     } catch (error: unknown) {
       console.error("Login error:", error);
 

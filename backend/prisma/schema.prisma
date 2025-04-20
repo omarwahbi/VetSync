@@ -31,15 +31,16 @@ model Clinic {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String // Store hashed password
-  firstName String?
-  lastName  String?
-  role      UserRole @default(STAFF) // Enum for roles
-  isActive  Boolean  @default(true) // User account status (different from clinic subscription)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  password           String // Store hashed password
+  firstName          String?
+  lastName           String?
+  role               UserRole @default(STAFF) // Enum for roles
+  isActive           Boolean  @default(true) // User account status (different from clinic subscription)
+  hashedRefreshToken String?  @unique // Store hashed refresh token
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // Relation: Each user belongs to at most one clinic
   // Platform admins can have null clinicId
