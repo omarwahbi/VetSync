@@ -40,4 +40,12 @@ export class RegisterDto {
 
 export class TokenResponseDto {
   access_token: string;
+  user: {
+    id: string;
+    email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    role: string;
+    clinicId?: string | null;
+  };
 } 

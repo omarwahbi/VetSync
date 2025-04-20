@@ -67,6 +67,7 @@ export class ReminderService {
               allowAutomatedReminders: true,
               clinic: {
                 isActive: true,
+                canSendReminders: true,
                 AND: [
                   { subscriptionEndDate: { not: null } },
                   { subscriptionEndDate: { gte: now } }

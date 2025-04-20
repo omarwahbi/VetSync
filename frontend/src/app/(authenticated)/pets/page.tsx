@@ -10,13 +10,17 @@ import {
   ClipboardList,
   Search,
   X,
+  RefreshCcw,
+  PawPrint,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axios";
 import { toast } from "sonner";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AxiosError } from "axios";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 import {
   Dialog,
@@ -52,7 +56,6 @@ import {
   TableCaption,
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PetForm, PetFormValues } from "@/components/forms/pet-form";
 import { Input } from "@/components/ui/input";
@@ -104,6 +107,11 @@ const fetchAllPets = async (searchTerm?: string): Promise<Pet[]> => {
   return response.data;
 };
 
+// Simple Skeleton component for loading states
+const Skeleton = ({ className = "" }: { className?: string }) => (
+  <div className={`bg-muted animate-pulse rounded ${className}`} />
+);
+
 export default function PetsPage() {
   const [isPetDialogOpen, setIsPetDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -111,6 +119,7 @@ export default function PetsPage() {
   const [deletingPet, setDeletingPet] = useState<Pet | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   // Debounce search term to prevent too many requests
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -273,7 +282,7 @@ export default function PetsPage() {
 
     updatePet({
       petId: editingPet.id,
-      ownerId: formData.ownerId, // Use the potentially new owner ID from the form
+      ownerId: formData.ownerId || editingPet.owner.id, // Use the potentially new owner ID from the form or fallback to current owner
       updateData: formData,
     });
   };
@@ -315,7 +324,7 @@ export default function PetsPage() {
 
   return (
     <div className="space-y-4">
-      <Card className="bg-white">
+      <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl">All Pets</CardTitle>
           <Dialog open={isPetDialogOpen} onOpenChange={setIsPetDialogOpen}>
@@ -325,7 +334,7 @@ export default function PetsPage() {
                 Add Pet
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader className="pb-2">
                 <DialogTitle className="text-xl">Add New Pet</DialogTitle>
               </DialogHeader>
@@ -367,14 +376,58 @@ export default function PetsPage() {
           </div>
 
           {isLoadingPets ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner size="md" text="Loading pets..." />
+            <div className="w-full overflow-hidden">
+              <Table className="w-full">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-muted/50">
+                    <TableHead className="font-medium">Name</TableHead>
+                    <TableHead className="font-medium">Species</TableHead>
+                    <TableHead className="font-medium">Breed</TableHead>
+                    <TableHead className="font-medium">Owner</TableHead>
+                    <TableHead className="text-center font-medium w-20">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-5 w-16" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Skeleton className="h-8 w-8 mx-auto rounded-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : isPetsError ? (
             <div className="py-8 text-center">
               <p className="text-red-500">
-                Error loading pets: {(petsError as Error).message}
+                Error loading pets:{" "}
+                {(petsError as Error)?.message || "Unknown error"}
               </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: ["pets"] })
+                }
+              >
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
             </div>
           ) : pets && pets.length > 0 ? (
             <Table className="w-full">
@@ -387,7 +440,7 @@ export default function PetsPage() {
                   <TableHead className="font-medium">Species</TableHead>
                   <TableHead className="font-medium">Breed</TableHead>
                   <TableHead className="font-medium">Owner</TableHead>
-                  <TableHead className="text-right font-medium">
+                  <TableHead className="text-center font-medium w-20">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -395,8 +448,15 @@ export default function PetsPage() {
               <TableBody className="divide-y">
                 {pets.map((pet) => (
                   <TableRow key={pet.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">{pet.name}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/pets/${pet.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {pet.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-center">
                       <Badge
                         variant="outline"
                         className={getSpeciesBadgeColor(pet.species)}
@@ -412,7 +472,7 @@ export default function PetsPage() {
                         ? `${pet.owner.firstName} ${pet.owner.lastName}`
                         : "Unknown"}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -431,7 +491,7 @@ export default function PetsPage() {
                         >
                           <DropdownMenuItem
                             onClick={() => handleEditClick(pet)}
-                            className="cursor-pointer"
+                            className="cursor-pointer text-left"
                             inset={false}
                           >
                             <Edit className="mr-2 h-4 w-4" />
@@ -439,7 +499,7 @@ export default function PetsPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             asChild
-                            className="cursor-pointer"
+                            className="cursor-pointer text-left"
                             inset={false}
                           >
                             <Link
@@ -452,7 +512,7 @@ export default function PetsPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(pet)}
-                            className="text-red-600 focus:text-red-600 cursor-pointer"
+                            className="text-red-600 focus:text-red-600 cursor-pointer text-left"
                             inset={false}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -466,8 +526,26 @@ export default function PetsPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">No pets found.</p>
+            <div className="flex flex-col items-center justify-center py-12">
+              <PawPrint className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-6">
+                {searchTerm
+                  ? `No pets found matching "${searchTerm}"`
+                  : isNewPetButtonDisabled
+                  ? "No owners registered yet. Please add an owner first before adding pets."
+                  : "No pets registered yet. Add your first pet to get started."}
+              </p>
+              {isNewPetButtonDisabled ? (
+                <Button onClick={() => router.push("/owners")}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Register an Owner First
+                </Button>
+              ) : (
+                <Button onClick={() => setIsPetDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add New Pet
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -475,7 +553,7 @@ export default function PetsPage() {
 
       {/* Edit Pet Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-4">
             <DialogTitle className="text-xl font-bold">Edit Pet</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">

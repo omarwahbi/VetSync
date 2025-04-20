@@ -1,10 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, ControllerRenderProps } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Calendar as CalendarIcon, Search } from "lucide-react";
+import {
+  Loader2,
+  Calendar as CalendarIcon,
+  Search,
+  User,
+  Cat,
+  Dog,
+  Users,
+  FileText,
+  Save,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 
 import {
@@ -31,8 +42,9 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
-// Define interfaces for Owner and Pet
+// Define interfaces for Owner
 interface Owner {
   id: string;
   firstName: string;
@@ -48,18 +60,20 @@ const petSchema = z.object({
   breed: z.string().optional(),
   birthDate: z.date().optional().nullable(),
   gender: z.string().optional(),
-  ownerId: z.string().min(1, { message: "Owner is required" }),
+  ownerId: z.string().optional(), // Make ownerId optional since it might be passed via props
   notes: z.string().optional(),
 });
 
 export type PetFormValues = z.infer<typeof petSchema>;
 
 interface PetFormProps {
-  initialData?: PetFormValues;
+  initialData?: Partial<PetFormValues>;
   onSubmit: (data: PetFormValues) => void;
   onClose: () => void;
   owners: Owner[];
   isLoading?: boolean;
+  ownerId?: string; // Optional owner ID - when provided, owner selection is hidden
+  hideButtons?: boolean; // Optional prop to hide form buttons when used in wizard
 }
 
 const genderOptions = [
@@ -82,24 +96,30 @@ export function PetForm({
   onClose,
   owners,
   isLoading = false,
+  ownerId,
+  hideButtons = false,
 }: PetFormProps) {
   const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
 
   const form = useForm<PetFormValues>({
     resolver: zodResolver(petSchema),
-    defaultValues: initialData || {
-      name: "",
-      species: "",
-      breed: "",
-      birthDate: null,
-      gender: "",
-      ownerId: "",
-      notes: "",
+    defaultValues: {
+      name: initialData?.name || "",
+      species: initialData?.species || "",
+      breed: initialData?.breed || "",
+      birthDate: initialData?.birthDate || null,
+      gender: initialData?.gender || "",
+      ownerId: ownerId || initialData?.ownerId || "",
+      notes: initialData?.notes || "",
     },
   });
 
   const handleSubmit = (data: PetFormValues) => {
-    onSubmit(data);
+    // Ensure the form data includes the ownerId if provided via props
+    onSubmit({
+      ...data,
+      ownerId: ownerId || data.ownerId,
+    });
   };
 
   // Filter owners based on search query
@@ -110,135 +130,183 @@ export function PetForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        {/* Owner Selection with Search */}
-        <FormField
-          control={form.control}
-          name="ownerId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Owner <span className="text-red-500">*</span>
-              </FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an owner" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <div className="flex items-center border-b px-3 py-2">
-                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                    <input
-                      placeholder="Search owners..."
-                      className="flex h-8 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      value={ownerSearchQuery}
-                      onChange={(e) => setOwnerSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="max-h-[200px] overflow-y-auto">
-                    {filteredOwners.length > 0 ? (
-                      filteredOwners.map((owner) => (
-                        <SelectItem key={owner.id} value={owner.id}>
-                          {owner.firstName} {owner.lastName}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="py-6 text-center text-sm">
-                        No owners found
-                      </div>
-                    )}
-                  </div>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form
+        id="pet-form"
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-4"
+      >
+        {/* Owner Selection - Only show if ownerId prop is not provided */}
+        {!ownerId && (
+          <FormField
+            control={form.control}
+            name="ownerId"
+            render={({
+              field,
+            }: {
+              field: ControllerRenderProps<PetFormValues, "ownerId">;
+            }) => (
+              <FormItem className="w-full">
+                <FormLabel className="flex items-center gap-1">
+                  <User className="h-4 w-4" />
+                  Owner <span className="text-red-500">*</span>
+                </FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl className="w-full">
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select an owner" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="w-full">
+                    <div className="flex items-center border-b px-3 py-2">
+                      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                      <input
+                        placeholder="Search owners..."
+                        className="flex h-8 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        value={ownerSearchQuery}
+                        onChange={(e) => setOwnerSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      {filteredOwners.length > 0 ? (
+                        filteredOwners.map((owner) => (
+                          <SelectItem
+                            key={owner.id}
+                            value={owner.id}
+                            className="flex py-2"
+                          >
+                            {owner.firstName} {owner.lastName}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="py-6 text-center text-sm">
+                          No owners found
+                        </div>
+                      )}
+                    </div>
+                  </SelectContent>
+                </Select>
+                <FormMessage className="w-full" />
+              </FormItem>
+            )}
+          />
+        )}
 
-        {/* Pet Name */}
         <FormField
           control={form.control}
           name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Name <span className="text-red-500">*</span>
+          render={({
+            field,
+          }: {
+            field: ControllerRenderProps<PetFormValues, "name">;
+          }) => (
+            <FormItem className="w-full">
+              <FormLabel className="flex items-center gap-1">
+                <Cat className="h-4 w-4" />
+                Pet&apos;s name <span className="text-red-500">*</span>
               </FormLabel>
-              <FormControl>
-                <Input placeholder="Pet's name" {...field} />
+              <FormControl className="w-full">
+                <Input
+                  type="text"
+                  className="w-full"
+                  placeholder="Pet's name"
+                  {...field}
+                />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="w-full" />
             </FormItem>
           )}
         />
 
-        {/* Species */}
         <FormField
           control={form.control}
           name="species"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
+          render={({
+            field,
+          }: {
+            field: ControllerRenderProps<PetFormValues, "species">;
+          }) => (
+            <FormItem className="w-full">
+              <FormLabel className="flex items-center gap-1">
+                <Dog className="h-4 w-4" />
                 Species <span className="text-red-500">*</span>
               </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
+                <FormControl className="w-full">
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select species" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className="max-h-[200px]">
                   {speciesOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      className="py-2"
+                    >
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
+              <FormMessage className="w-full" />
             </FormItem>
           )}
         />
 
-        {/* Breed */}
         <FormField
           control={form.control}
           name="breed"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Breed</FormLabel>
-              <FormControl>
+          render={({
+            field,
+          }: {
+            field: ControllerRenderProps<PetFormValues, "breed">;
+          }) => (
+            <FormItem className="w-full">
+              <FormLabel className="flex items-center gap-1">
+                <Cat className="h-4 w-4" />
+                Breed
+              </FormLabel>
+              <FormControl className="w-full">
                 <Input
+                  type="text"
+                  className="w-full"
                   placeholder="Breed"
                   {...field}
-                  value={field.value || ""}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="w-full" />
             </FormItem>
           )}
         />
 
-        {/* Birth Date */}
         <FormField
           control={form.control}
           name="birthDate"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Birth Date</FormLabel>
+          render={({
+            field,
+          }: {
+            field: ControllerRenderProps<PetFormValues, "birthDate">;
+          }) => (
+            <FormItem className="w-full">
+              <FormLabel className="flex items-center gap-1">
+                <CalendarIcon className="h-4 w-4" />
+                Birth Date
+              </FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
-                  <FormControl>
+                  <FormControl className="w-full">
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
+                        "pl-3 text-left font-normal w-full",
                         !field.value && "text-muted-foreground"
                       )}
                     >
                       {field.value ? (
-                        format(field.value, "PPP")
+                        format(new Date(field.value), "PPP")
                       ) : (
                         <span>Pick a date</span>
                       )}
@@ -249,82 +317,107 @@ export function PetForm({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={field.value || undefined}
+                    selected={field.value ? new Date(field.value) : undefined}
                     onSelect={field.onChange}
+                    disabled={(date) =>
+                      date > new Date() || date < new Date("1900-01-01")
+                    }
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
-              <FormMessage />
+              <FormMessage className="w-full" />
             </FormItem>
           )}
         />
 
-        {/* Gender */}
         <FormField
           control={form.control}
           name="gender"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Gender</FormLabel>
+          render={({
+            field,
+          }: {
+            field: ControllerRenderProps<PetFormValues, "gender">;
+          }) => (
+            <FormItem className="w-full">
+              <FormLabel className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                Gender
+              </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
+                <FormControl className="w-full">
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className="max-h-[200px]">
                   {genderOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      className="py-2"
+                    >
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
+              <FormMessage className="w-full" />
             </FormItem>
           )}
         />
 
-        {/* Notes */}
         <FormField
           control={form.control}
           name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notes</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Additional notes"
+          render={({
+            field,
+          }: {
+            field: ControllerRenderProps<PetFormValues, "notes">;
+          }) => (
+            <FormItem className="w-full">
+              <FormLabel className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Notes
+              </FormLabel>
+              <FormControl className="w-full">
+                <Textarea
+                  placeholder="Any additional notes"
+                  className="resize-none"
                   {...field}
-                  value={field.value || ""}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="w-full" />
             </FormItem>
           )}
         />
 
-        <div className="flex justify-end gap-2 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Pet"
-            )}
-          </Button>
-        </div>
+        {!hideButtons && (
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Pet
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </form>
     </Form>
   );

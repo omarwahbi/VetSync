@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sidebar } from "./sidebar";
+import { ThemeToggleButton } from "@/components/ui/theme-toggle-button";
 
 export function Header() {
   const { logout, user } = useAuthStore();
@@ -44,7 +45,7 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 border-b flex items-center justify-between px-4">
+    <header className="h-16 border-b border-border bg-white dark:bg-background flex items-center justify-between px-4 md:px-6 shadow-sm">
       <div className="flex items-center">
         <Sheet>
           <SheetTrigger asChild>
@@ -63,12 +64,13 @@ export function Header() {
         <div className="md:hidden ml-2 font-bold">Vet Clinic</div>
       </div>
 
-      <div>
+      <div className="flex items-center space-x-4">
+        <ThemeToggleButton />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-sm">
+                <AvatarFallback className="text-sm bg-primary text-primary-foreground">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>

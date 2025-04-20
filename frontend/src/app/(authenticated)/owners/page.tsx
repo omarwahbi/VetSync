@@ -10,11 +10,17 @@ import {
   Trash2,
   Search,
   X,
+  Eye,
+  MessageSquare,
+  RefreshCcw,
+  Users,
 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import Link from "next/link";
+import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 
 import {
   Dialog,
@@ -53,6 +59,7 @@ import { Button } from "@/components/ui/button";
 import { OwnerForm, OwnerFormValues } from "@/components/forms/owner-form";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { NewClientWizard } from "@/components/wizards/new-client-wizard";
 
 interface Owner {
   id: string;
@@ -62,6 +69,7 @@ interface Owner {
   phone: string;
   allowAutomatedReminders: boolean;
   createdAt: string;
+  address?: string;
 }
 
 interface ErrorResponse {
@@ -81,12 +89,18 @@ const fetchOwners = async (searchTerm?: string): Promise<Owner[]> => {
   return response.data;
 };
 
+// Simple Skeleton component for loading states
+const Skeleton = ({ className = "" }: { className?: string }) => (
+  <div className={`bg-muted animate-pulse rounded ${className}`} />
+);
+
 export default function OwnersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | null>(null);
   const [deletingOwner, setDeletingOwner] = useState<Owner | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Debounce search term to prevent too many requests
@@ -179,10 +193,6 @@ export default function OwnersPage() {
     },
   });
 
-  const handleCreateOwner = (data: OwnerFormValues) => {
-    createOwner(data);
-  };
-
   const handleUpdateOwner = (data: OwnerFormValues) => {
     if (!editingOwner) {
       toast.error("Cannot update owner: Missing owner information");
@@ -218,31 +228,33 @@ export default function OwnersPage() {
 
   return (
     <div className="space-y-4">
-      <Card className="bg-white">
+      <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl">Manage Owners</CardTitle>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="default"
-                size="sm"
-                className="flex items-center gap-1"
-              >
-                <Plus className="h-4 w-4" />
-                New Owner
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader className="pb-2">
-                <DialogTitle className="text-xl">Add New Owner</DialogTitle>
-              </DialogHeader>
-              <OwnerForm
-                onSubmit={handleCreateOwner}
-                onClose={() => setIsDialogOpen(false)}
-                isLoading={isCreating}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Owner
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-xl">Add New Owner</DialogTitle>
+                </DialogHeader>
+                <OwnerForm
+                  onSubmit={(data) => createOwner(data)}
+                  onClose={() => setIsDialogOpen(false)}
+                  isLoading={isCreating}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {/* Search input */}
@@ -273,15 +285,62 @@ export default function OwnersPage() {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="sr-only">Loading owners...</span>
+            <div className="w-full overflow-hidden">
+              <Table className="w-full">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-muted/50">
+                    <TableHead className="font-medium">First Name</TableHead>
+                    <TableHead className="font-medium">Last Name</TableHead>
+                    <TableHead className="font-medium">Email</TableHead>
+                    <TableHead className="font-medium">Phone</TableHead>
+                    <TableHead className="font-medium">Reminders</TableHead>
+                    <TableHead className="text-center font-medium w-20">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-5 w-16" />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Skeleton className="h-8 w-8 mx-auto rounded-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : isError ? (
             <div className="py-8 text-center">
               <p className="text-red-500">
-                Error loading owners: {(error as Error).message}
+                Error loading owners:{" "}
+                {(error as Error)?.message || "Unknown error"}
               </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: ["owners"] })
+                }
+              >
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
             </div>
           ) : owners && owners.length > 0 ? (
             <Table className="w-full">
@@ -295,82 +354,125 @@ export default function OwnersPage() {
                   <TableHead className="font-medium">Email</TableHead>
                   <TableHead className="font-medium">Phone</TableHead>
                   <TableHead className="font-medium">Reminders</TableHead>
-                  <TableHead className="text-right font-medium">
+                  <TableHead className="text-center font-medium w-20">
                     Actions
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y">
-                {owners.map((owner) => (
-                  <TableRow key={owner.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">
-                      {owner.firstName}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {owner.lastName}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {owner.email || "-"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {owner.phone}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {owner.allowAutomatedReminders ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-green-100 text-green-800"
+                {owners?.map((owner: Owner) => {
+                  const whatsappNumber = formatPhoneNumberForWhatsApp(
+                    owner.phone
+                  );
+
+                  return (
+                    <TableRow key={owner.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/owners/${owner.id}`}
+                          className="text-primary hover:underline"
                         >
-                          Enabled
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="bg-red-100 text-red-800"
-                        >
-                          Disabled
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 p-0"
+                          {owner.firstName}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {owner.lastName}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {owner.email || "-"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span>{owner.phone}</span>
+                          {whatsappNumber && (
+                            <a
+                              href={`https://wa.me/${whatsappNumber}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-green-600 hover:text-green-700"
+                              title={`Chat with ${owner.firstName} on WhatsApp`}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {owner.allowAutomatedReminders ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-green-100 text-green-800"
                           >
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem
-                            onClick={() => handleEditClick(owner)}
-                            className="cursor-pointer"
-                            inset={false}
+                            Enabled
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="bg-red-100 text-red-800"
                           >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteClick(owner)}
-                            className="text-red-600 focus:text-red-600 cursor-pointer"
-                            inset={false}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            Disabled
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 p-0"
+                            >
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36">
+                            <DropdownMenuItem
+                              asChild
+                              className="cursor-pointer text-left"
+                              inset={false}
+                            >
+                              <Link href={`/owners/${owner.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleEditClick(owner)}
+                              className="cursor-pointer text-left"
+                              inset={false}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(owner)}
+                              className="text-red-600 focus:text-red-600 cursor-pointer text-left"
+                              inset={false}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">No owners found.</p>
+            <div className="flex flex-col items-center justify-center py-12">
+              <Users className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-6">
+                {searchTerm
+                  ? `No owners found matching "${searchTerm}"`
+                  : "No owners registered yet. Add your first client to get started."}
+              </p>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Register New Owner
+              </Button>
             </div>
           )}
         </CardContent>
@@ -384,7 +486,14 @@ export default function OwnersPage() {
           </DialogHeader>
           {editingOwner && (
             <OwnerForm
-              initialData={editingOwner}
+              initialData={{
+                firstName: editingOwner.firstName,
+                lastName: editingOwner.lastName,
+                phone: editingOwner.phone,
+                email: editingOwner.email || undefined,
+                address: editingOwner.address || undefined,
+                allowAutomatedReminders: editingOwner.allowAutomatedReminders,
+              }}
               onSubmit={handleUpdateOwner}
               onClose={() => setIsEditDialogOpen(false)}
               isLoading={isUpdatingOwner}
@@ -402,16 +511,18 @@ export default function OwnersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete {deletingOwner?.firstName}{" "}
-              {deletingOwner?.lastName} from your records. This action cannot be
+              This action will permanently delete the owner and cannot be
               undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeletingOwner}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteOwner}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              disabled={isDeletingOwner}
             >
               {isDeletingOwner ? (
                 <>
@@ -425,6 +536,11 @@ export default function OwnersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <NewClientWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+      />
     </div>
   );
 }

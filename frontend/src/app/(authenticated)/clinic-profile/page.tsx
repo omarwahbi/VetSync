@@ -86,7 +86,7 @@ export default function ClinicProfilePage() {
   if (isError) {
     return (
       <div className="container py-8">
-        <Card className="bg-white">
+        <Card className="bg-white dark:bg-card">
           <CardHeader className="">
             <CardTitle className="text-2xl">Clinic Profile</CardTitle>
           </CardHeader>
@@ -113,7 +113,7 @@ export default function ClinicProfilePage() {
   if (isLoading || !clinicProfile) {
     return (
       <div className="container py-8">
-        <Card className="bg-white">
+        <Card className="bg-white dark:bg-card">
           <CardHeader className="">
             <CardTitle className="text-2xl">Clinic Profile</CardTitle>
           </CardHeader>
@@ -129,7 +129,7 @@ export default function ClinicProfilePage() {
 
   return (
     <div className="container py-8">
-      <Card className="bg-white">
+      <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="h-6 w-6 text-primary" />

@@ -19,6 +19,7 @@ model Clinic {
   address             String? // Optional address
   phone               String? // Optional phone
   isActive            Boolean   @default(false) // Subscription status
+  canSendReminders    Boolean   @default(false) // Explicit flag for reminder feature access
   subscriptionEndDate DateTime? // Subscription end date
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -40,9 +41,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relation: Each user belongs to exactly one clinic
-  clinicId String
-  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade) // If clinic deleted, delete user
+  // Relation: Each user belongs to at most one clinic
+  // Platform admins can have null clinicId
+  clinicId String?
+  clinic   Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@index([clinicId]) // Index for faster lookups by clinic
 }
@@ -58,6 +60,7 @@ model Owner {
   lastName                String
   phone                   String
   email                   String?
+  address                 String?  @db.Text // Optional address field
   allowAutomatedReminders Boolean  @default(true)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
@@ -99,6 +102,7 @@ model Visit {
   visitDate         DateTime  @default(now())
   visitType         String
   notes             String?   @db.Text
+  price             Decimal?  @db.Decimal(10, 2) // Optional price field
   nextReminderDate  DateTime?
   reminderSent      Boolean   @default(false)
   isReminderEnabled Boolean   @default(true)

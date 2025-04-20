@@ -16,8 +16,14 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Calendar, Search, X, Filter, MoreHorizontal } from "lucide-react";
+import {
+  Calendar,
+  Search,
+  X,
+  Filter,
+  MoreHorizontal,
+  RefreshCcw,
+} from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -65,6 +71,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { AxiosError } from "axios";
+import { Plus } from "lucide-react";
 
 // Constants
 const ITEMS_PER_PAGE = 20;
@@ -85,6 +92,7 @@ interface Visit {
   notes: string;
   nextReminderDate: string | null;
   isReminderEnabled: boolean;
+  price: number | null;
   pet: {
     id: string;
     name: string;
@@ -215,6 +223,26 @@ const getReminderStatusBadge = (
   }
 };
 
+// Simple Skeleton component for loading states
+const Skeleton = ({ className = "" }: { className?: string }) => (
+  <div className={`bg-muted animate-pulse rounded ${className}`} />
+);
+
+// Function to format currency
+const formatCurrency = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined) return "N/A";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "N/A";
+
+  // Format with commas and 2 decimal places
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "IQD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
+};
+
 export default function VisitsPage() {
   // Add state for dialogs and mutations
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -263,13 +291,14 @@ export default function VisitsPage() {
   }) => {
     const { petId, visitId, updateData } = data;
 
-    // Format dates for API
+    // Format date for API
     const formattedData = {
       ...updateData,
       visitDate: updateData.visitDate.toISOString(),
       nextReminderDate: updateData.nextReminderDate
         ? updateData.nextReminderDate.toISOString()
-        : undefined,
+        : null,
+      price: updateData.price,
     };
 
     const response = await axiosInstance.patch(
@@ -375,7 +404,7 @@ export default function VisitsPage() {
         </p>
       </div>
 
-      <Card className="bg-white">
+      <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl">
             <div className="flex items-center gap-2">
@@ -470,14 +499,72 @@ export default function VisitsPage() {
 
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner size="md" text="Loading visits..." />
+            <div className="w-full overflow-hidden">
+              <Table className="w-full">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-muted/50">
+                    <TableHead className="font-medium">Visit Date</TableHead>
+                    <TableHead className="font-medium">Pet</TableHead>
+                    <TableHead className="font-medium">Owner</TableHead>
+                    <TableHead className="font-medium">Visit Type</TableHead>
+                    <TableHead className="font-medium">Price</TableHead>
+                    <TableHead className="font-medium">Next Reminder</TableHead>
+                    <TableHead className="font-medium">
+                      Reminder Status
+                    </TableHead>
+                    <TableHead className="font-medium text-center w-20">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={`skeleton-${index}`}>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-5 w-20" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Skeleton className="h-5 w-16" />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Skeleton className="h-8 w-8 mx-auto rounded-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : isError ? (
-            <div className="py-4 text-center">
+            <div className="py-8 text-center">
               <p className="text-red-500">
-                Error loading data: {(error as Error).message}
+                Error loading visits:{" "}
+                {(error as Error)?.message || "Unknown error"}
               </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: ["visits"] })
+                }
+              >
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
             </div>
           ) : visits.length > 0 ? (
             <Table className="w-full">
@@ -491,9 +578,12 @@ export default function VisitsPage() {
                   <TableHead className="font-medium">Pet</TableHead>
                   <TableHead className="font-medium">Owner</TableHead>
                   <TableHead className="font-medium">Visit Type</TableHead>
+                  <TableHead className="font-medium">Price</TableHead>
                   <TableHead className="font-medium">Next Reminder</TableHead>
                   <TableHead className="font-medium">Reminder Status</TableHead>
-                  <TableHead className="font-medium w-24">Actions</TableHead>
+                  <TableHead className="font-medium text-center w-20">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y">
@@ -523,6 +613,9 @@ export default function VisitsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
+                        {formatCurrency(visit.price)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
                         {reminderDate
                           ? format(reminderDate, "MMM d, yyyy")
                           : "Not set"}
@@ -533,7 +626,7 @@ export default function VisitsPage() {
                           visit.nextReminderDate
                         )}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -551,13 +644,13 @@ export default function VisitsPage() {
                           >
                             <DropdownMenuItem
                               onClick={() => handleEditClick(visit)}
-                              className="cursor-pointer"
+                              className="cursor-pointer text-left"
                               inset={false}
                             >
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="text-red-600 cursor-pointer"
+                              className="text-red-600 cursor-pointer text-left"
                               onClick={() => handleDeleteClick(visit)}
                               inset={false}
                             >
@@ -572,12 +665,24 @@ export default function VisitsPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-12">
+              <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-6">
                 {hasActiveFilters
-                  ? "No visits match your filters."
-                  : "No visits found."}
+                  ? "No visits match your filters. Try adjusting or clearing your filters."
+                  : "No visits recorded yet. Add your first visit to get started."}
               </p>
+              {hasActiveFilters ? (
+                <Button variant="outline" onClick={clearFilters}>
+                  <Filter className="mr-2 h-4 w-4" />
+                  Clear All Filters
+                </Button>
+              ) : (
+                <Button onClick={() => setIsEditDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Record New Visit
+                </Button>
+              )}
             </div>
           )}
 
@@ -688,6 +793,7 @@ export default function VisitsPage() {
                   ? new Date(editingVisit.nextReminderDate)
                   : undefined,
                 isReminderEnabled: editingVisit.isReminderEnabled,
+                price: editingVisit.price,
                 pet: {
                   id: editingVisit.pet.id,
                   name: editingVisit.pet.name,

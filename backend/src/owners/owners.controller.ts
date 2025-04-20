@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request, Query } from '@nestjs/common';
 import { OwnersService } from './owners.service';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
+import { FilterOwnerDto } from './dto/filter-owner.dto';
 
 @Controller('owners')
 export class OwnersController {
@@ -13,8 +14,8 @@ export class OwnersController {
   }
 
   @Get()
-  findAll(@Request() req) {
-    return this.ownersService.findAll(req.user);
+  findAll(@Query() filterOwnerDto: FilterOwnerDto, @Request() req) {
+    return this.ownersService.findAll(req.user, filterOwnerDto);
   }
 
   @Get(':id')

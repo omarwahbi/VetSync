@@ -8,12 +8,38 @@ import {
   Delete,
   Request,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { PetsService } from './pets.service';
 import { CreatePetDto } from './dto/create-pet.dto';
 import { UpdatePetDto } from './dto/update-pet.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { FilterPetDto } from './dto/filter-pet.dto';
 
+// Controller for top-level pets routes
+@Controller('pets')
+@UseGuards(JwtAuthGuard)
+export class PetsTopLevelController {
+  constructor(private readonly petsService: PetsService) {}
+
+  @Get()
+  findAllClinicPets(
+    @Query() filterPetDto: FilterPetDto,
+    @Request() req: { user: any },
+  ) {
+    return this.petsService.findAllClinicPets(req.user, filterPetDto);
+  }
+
+  @Get(':id')
+  findOne(
+    @Param('id') id: string,
+    @Request() req: { user: any },
+  ) {
+    return this.petsService.findOneByPetId(id, req.user);
+  }
+}
+
+// Controller for nested pets routes under owners
 @Controller('owners/:ownerId/pets')
 @UseGuards(JwtAuthGuard)
 export class PetsController {

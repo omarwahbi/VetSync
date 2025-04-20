@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -39,6 +40,7 @@ const visitSchema = z
     // Schema default is for new records, edited records use their own value
     isReminderEnabled: z.boolean(),
     nextReminderDate: z.date().optional(),
+    price: z.number().positive().max(999999.99).optional().nullable(),
   })
   .refine(
     (data) => {
@@ -89,6 +91,7 @@ interface VisitFormProps {
       allowAutomatedReminders?: boolean;
     };
   };
+  hideButtons?: boolean;
 }
 
 export function VisitForm({
@@ -97,6 +100,7 @@ export function VisitForm({
   onClose,
   isLoading = false,
   selectedPetData,
+  hideButtons = false,
 }: VisitFormProps) {
   // Log what we receive as initialData
   console.log("VisitForm received initialData:", initialData);
@@ -131,6 +135,7 @@ export function VisitForm({
         notes: initialData.notes,
         isReminderEnabled: initialData.isReminderEnabled,
         nextReminderDate: initialData.nextReminderDate,
+        price: initialData.price !== undefined ? initialData.price : null,
       }
     : {};
 
@@ -152,6 +157,13 @@ export function VisitForm({
         isReminderEnabled: ownerAllowsReminders
           ? formFields.isReminderEnabled ?? true
           : false,
+        // Handle price - parse if it's a string from API
+        price:
+          formFields.price !== undefined && formFields.price !== null
+            ? typeof formFields.price === "string"
+              ? parseFloat(formFields.price)
+              : formFields.price
+            : null,
       }
     : {
         // Defaults for a NEW form
@@ -160,6 +172,7 @@ export function VisitForm({
         notes: "",
         isReminderEnabled: ownerAllowsReminders, // Set based on owner preference
         nextReminderDate: undefined,
+        price: null,
       };
   // Add a log to verify right before passing to useForm
   console.log("Default values for form:", defaultValuesForForm);
@@ -219,9 +232,26 @@ export function VisitForm({
     form.setValue("nextReminderDate", newDate);
   };
 
+  // Format currency for display
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return "";
+    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  // Parse numeric input removing commas
+  const parseNumericInput = (value: string): number | null => {
+    if (value === "") return null;
+    // Remove all commas before parsing
+    return parseFloat(value.replace(/,/g, ""));
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+      <form
+        id="visit-form"
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-8"
+      >
         <FormField
           control={form.control}
           name="visitDate"
@@ -271,6 +301,37 @@ export function VisitForm({
                   ))}
                 </SelectContent>
               </Select>
+              <FormMessage className="" />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="price"
+          render={({
+            field,
+          }: {
+            field: ControllerRenderProps<VisitFormValues, "price">;
+          }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel className="">Visit Price (IQD)</FormLabel>
+              <FormControl>
+                <Input
+                  type="text"
+                  placeholder="0.00"
+                  className=""
+                  value={formatCurrency(field.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    // Only allow digits, commas, and decimal point
+                    const value = e.target.value.replace(/[^\d,.]/g, "");
+                    // Only update if it's a valid number or empty
+                    if (value === "" || /^[\d,]+(\.\d*)?$/.test(value)) {
+                      field.onChange(parseNumericInput(value));
+                    }
+                  }}
+                />
+              </FormControl>
               <FormMessage className="" />
             </FormItem>
           )}
@@ -414,20 +475,22 @@ export function VisitForm({
           />
         </div>
 
-        <div className="flex justify-end gap-4 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {initialData ? "Update Visit" : "Add Visit"}
-          </Button>
-        </div>
+        {!hideButtons && (
+          <div className="flex justify-end gap-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {initialData ? "Update Visit" : "Add Visit"}
+            </Button>
+          </div>
+        )}
       </form>
     </Form>
   );

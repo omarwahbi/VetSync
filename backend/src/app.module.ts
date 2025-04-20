@@ -9,6 +9,11 @@ import { OwnersModule } from './owners/owners.module';
 import { PetsModule } from './pets/pets.module';
 import { VisitsModule } from './visits/visits.module';
 import { ReminderModule } from './reminder/reminder.module';
+import { ClinicProfileModule } from './clinic-profile/clinic-profile.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ClinicsModule } from './admin/clinics/clinics.module';
+import { UsersModule } from './users/users.module';
+import { UsersModule as AdminUsersModule } from './admin/users/users.module';
 
 @Module({
   imports: [
@@ -20,6 +25,11 @@ import { ReminderModule } from './reminder/reminder.module';
     PetsModule,
     VisitsModule,
     ReminderModule,
+    ClinicProfileModule,
+    DashboardModule,
+    ClinicsModule,
+    UsersModule,
+    AdminUsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

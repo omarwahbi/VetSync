@@ -61,6 +61,7 @@ interface Visit {
   createdAt: string;
   updatedAt: string;
   petId: string;
+  price?: number | null;
   initialFormData?: VisitFormValues;
 }
 
@@ -159,6 +160,21 @@ const reminderStatusText = (isEnabled: boolean) => {
   return isEnabled ? "Enabled" : "Disabled";
 };
 
+// Function to format currency
+const formatCurrency = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined) return "N/A";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "N/A";
+
+  // Format with commas and 2 decimal places
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "IQD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
+};
+
 export default function PetVisitsPage() {
   const [isVisitDialogOpen, setIsVisitDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -199,7 +215,8 @@ export default function PetVisitsPage() {
       ...newVisitData,
       nextReminderDate: newVisitData.nextReminderDate
         ? newVisitData.nextReminderDate.toISOString()
-        : undefined,
+        : null,
+      price: newVisitData.price,
     };
 
     const response = await axiosInstance.post(
@@ -229,16 +246,20 @@ export default function PetVisitsPage() {
     visitId: string;
     updateData: VisitFormValues;
   }) => {
-    // Format date for API if it exists
+    const { visitId, updateData } = data;
+
+    // Format dates for API
     const formattedData = {
-      ...data.updateData,
-      nextReminderDate: data.updateData.nextReminderDate
-        ? data.updateData.nextReminderDate.toISOString()
-        : undefined,
+      ...updateData,
+      visitDate: updateData.visitDate.toISOString(),
+      nextReminderDate: updateData.nextReminderDate
+        ? updateData.nextReminderDate.toISOString()
+        : null,
+      price: updateData.price,
     };
 
     const response = await axiosInstance.patch(
-      `/pets/${petId}/visits/${data.visitId}`,
+      `/pets/${petId}/visits/${visitId}`,
       formattedData
     );
     return response.data;
@@ -341,7 +362,7 @@ export default function PetVisitsPage() {
 
   return (
     <div className="space-y-4">
-      <Card className="bg-white">
+      <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl">
             {isLoadingPet
@@ -362,7 +383,7 @@ export default function PetVisitsPage() {
                 New Visit
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader className="pb-4">
                 <DialogTitle className="text-xl font-bold">
                   Add New Visit
@@ -398,12 +419,13 @@ export default function PetVisitsPage() {
               </TableCaption>
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-muted/50">
-                  <TableHead className="font-medium">Visit Date</TableHead>
-                  <TableHead className="font-medium">Visit Type</TableHead>
+                  <TableHead className="font-medium w-36">Date</TableHead>
+                  <TableHead className="font-medium w-28">Type</TableHead>
+                  <TableHead className="font-medium w-28">Price</TableHead>
+                  <TableHead className="font-medium w-36">Next Visit</TableHead>
+                  <TableHead className="font-medium w-28">Reminder</TableHead>
                   <TableHead className="font-medium">Notes</TableHead>
-                  <TableHead className="font-medium">Next Reminder</TableHead>
-                  <TableHead className="font-medium">Reminder Status</TableHead>
-                  <TableHead className="text-right font-medium">
+                  <TableHead className="text-right font-medium w-12">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -425,18 +447,28 @@ export default function PetVisitsPage() {
                         {visit.visitType}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {visit.notes
-                        ? visit.notes.length > 50
-                          ? `${visit.notes.substring(0, 50)}...`
-                          : visit.notes
-                        : "No notes"}
+                    <TableCell className="">
+                      {formatCurrency(visit.price)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(visit.nextReminderDate)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {reminderStatusText(visit.isReminderEnabled)}
+                      <Badge
+                        variant={
+                          visit.isReminderEnabled ? "default" : "outline"
+                        }
+                        className={
+                          visit.isReminderEnabled
+                            ? "bg-green-500 hover:bg-green-500"
+                            : ""
+                        }
+                      >
+                        {reminderStatusText(visit.isReminderEnabled)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {visit.notes || "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -486,7 +518,7 @@ export default function PetVisitsPage() {
 
       {/* Edit Visit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-4">
             <DialogTitle className="text-xl font-bold">Edit Visit</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">

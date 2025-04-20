@@ -3,7 +3,16 @@
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+  User,
+  Mail,
+  Phone,
+  Bell,
+  Save,
+  X,
+  MapPin,
+} from "lucide-react";
 
 import {
   Form,
@@ -17,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 // Define validation schema
 const ownerSchema = z.object({
@@ -29,11 +39,15 @@ const ownerSchema = z.object({
       z.null(),
     ])
     .optional()
-    .transform((val) => (val === "" ? null : val)),
+    .transform((val) => (val === "" || val === null ? undefined : val)),
   phone: z
     .string()
     .regex(/^[0-9+\-\s()]*$/, "Invalid phone number format")
     .min(1, "Phone number is required"),
+  address: z
+    .string()
+    .max(500, "Address must be less than 500 characters")
+    .optional(),
   allowAutomatedReminders: z.boolean().default(true),
 });
 
@@ -44,6 +58,7 @@ interface OwnerFormProps {
   onSubmit: (data: OwnerFormValues) => void;
   onClose: () => void;
   isLoading?: boolean;
+  hideButtons?: boolean;
 }
 
 export function OwnerForm({
@@ -51,14 +66,19 @@ export function OwnerForm({
   onSubmit,
   onClose,
   isLoading = false,
+  hideButtons = false,
 }: OwnerFormProps) {
   const form = useForm<OwnerFormValues>({
     resolver: zodResolver(ownerSchema),
     defaultValues: {
       firstName: initialData?.firstName || "",
       lastName: initialData?.lastName || "",
-      email: initialData?.email === null ? "" : initialData?.email || "",
+      email:
+        initialData?.email === null || initialData?.email === undefined
+          ? ""
+          : initialData.email,
       phone: initialData?.phone || "",
+      address: initialData?.address || "",
       allowAutomatedReminders:
         initialData?.allowAutomatedReminders !== undefined
           ? initialData.allowAutomatedReminders
@@ -66,23 +86,34 @@ export function OwnerForm({
     },
   });
 
-  const handleSubmit = async (data: OwnerFormValues) => {
-    onSubmit(data);
+  const handleSubmit = (data: OwnerFormValues) => {
+    // Remove undefined fields before submitting
+    const payload = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== undefined)
+    );
+    onSubmit(payload as OwnerFormValues);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form
+        id="owner-form"
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-4"
+      >
         <FormField
           control={form.control}
           name="firstName"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>First Name</FormLabel>
+            <FormItem className="space-y-2">
+              <FormLabel className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                First Name
+              </FormLabel>
               <FormControl>
                 <Input placeholder="John" {...field} />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-sm" />
             </FormItem>
           )}
         />
@@ -91,12 +122,15 @@ export function OwnerForm({
           control={form.control}
           name="lastName"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Last Name</FormLabel>
+            <FormItem className="space-y-2">
+              <FormLabel className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Last Name
+              </FormLabel>
               <FormControl>
                 <Input placeholder="Doe" {...field} />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-sm" />
             </FormItem>
           )}
         />
@@ -105,8 +139,11 @@ export function OwnerForm({
           control={form.control}
           name="email"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email (Optional)</FormLabel>
+            <FormItem className="space-y-2">
+              <FormLabel className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email (Optional)
+              </FormLabel>
               <FormControl>
                 <Input
                   type="email"
@@ -119,7 +156,7 @@ export function OwnerForm({
                   }}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-sm" />
             </FormItem>
           )}
         />
@@ -128,8 +165,9 @@ export function OwnerForm({
           control={form.control}
           name="phone"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>
+            <FormItem className="space-y-2">
+              <FormLabel className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
                 Phone Number <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
@@ -139,7 +177,29 @@ export function OwnerForm({
                   value={field.value || ""}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-sm" />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem className="space-y-2">
+              <FormLabel className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Address (Optional)
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Enter owner address..."
+                  {...field}
+                  value={field.value || ""}
+                  className="resize-none min-h-[80px]"
+                />
+              </FormControl>
+              <FormMessage className="text-sm" />
             </FormItem>
           )}
         />
@@ -156,37 +216,51 @@ export function OwnerForm({
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>Allow Automated Reminders</FormLabel>
-                <FormDescription>
+                <FormLabel className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Allow Automated Reminders
+                </FormLabel>
+                <FormDescription className="text-sm text-muted-foreground">
                   Send automated reminders to this owner for upcoming pet
                   visits.
                 </FormDescription>
               </div>
-              <FormMessage />
+              <FormMessage className="text-sm" />
             </FormItem>
           )}
         />
 
-        <div className="flex justify-end gap-2 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Owner"
-            )}
-          </Button>
-        </div>
+        {!hideButtons && (
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save Owner
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </form>
     </Form>
   );

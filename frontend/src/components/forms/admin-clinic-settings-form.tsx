@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
+import { format, addMonths, addYears } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +84,16 @@ export function AdminClinicSettingsForm({
   // Clear the subscription end date
   const handleClearDate = () => {
     form.setValue("subscriptionEndDate", null);
+  };
+
+  // Handle subscription plan selection
+  const handlePlanSelection = (months: number) => {
+    const today = new Date();
+    const newEndDate =
+      months === 12
+        ? addYears(today, 1) // 1 year
+        : addMonths(today, months); // 1 or 6 months
+    form.setValue("subscriptionEndDate", newEndDate);
   };
 
   return (
@@ -219,6 +229,38 @@ export function AdminClinicSettingsForm({
                   </Button>
                 )}
               </div>
+
+              {/* Subscription Plan Options */}
+              <div className="flex flex-col space-y-2 mt-2">
+                <FormDescription>Quick Subscription Plans</FormDescription>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePlanSelection(1)}
+                  >
+                    1 Month
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePlanSelection(6)}
+                  >
+                    6 Months
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePlanSelection(12)}
+                  >
+                    1 Year
+                  </Button>
+                </div>
+              </div>
+
               <FormMessage />
             </FormItem>
           )}

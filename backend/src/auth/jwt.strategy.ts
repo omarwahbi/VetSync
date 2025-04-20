@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 interface JwtPayload {
   username: string;
   sub: string;
-  clinicId: string;
+  clinicId?: string | null;
   role: string;
 }
 
@@ -49,7 +49,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('User account is inactive');
       }
 
-      // Validate clinic exists and is active
+      // For admin users, we don't need to validate clinic
+      if (user.role === 'ADMIN' && !user.clinicId) {
+        // Admin without clinic is allowed
+        const { password, ...result } = user;
+        return result;
+      }
+
+      // For non-admin users, validate clinic exists and is active
       if (!user.clinic || !user.clinic.isActive) {
         throw new UnauthorizedException('Clinic subscription is inactive');
       }

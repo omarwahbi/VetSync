@@ -1,16 +1,17 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, UserRole } from '@prisma/client';
 import { RegisterDto, TokenResponseDto } from './dto/auth.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 type UserWithoutPassword = Omit<User, 'password'>;
 
 interface JwtPayload {
   username: string;
   sub: string;
-  clinicId: string;
+  clinicId?: string | null;
   role: UserRole;
 }
 
@@ -67,6 +68,14 @@ export class AuthService {
     this.logger.debug(`JWT token generated successfully for user: ${user.email}`);
     return {
       access_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        clinicId: user.clinicId,
+      },
     };
   }
 
@@ -115,6 +124,51 @@ export class AuthService {
     } catch (error: any) {
       this.logger.error(`Registration error for ${data.email}: ${error.message}`);
       throw new UnauthorizedException('Registration failed: ' + error.message);
+    }
+  }
+
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<{ message: string }> {
+    this.logger.debug(`Attempting to change password for user ID: ${userId}`);
+
+    try {
+      // Find the user
+      const user = await this.prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+      });
+
+      // Verify current password
+      const isCurrentPasswordValid = await bcrypt.compare(
+        changePasswordDto.currentPassword,
+        user.password
+      );
+
+      if (!isCurrentPasswordValid) {
+        this.logger.warn(`Password change failed: Incorrect current password for user ID: ${userId}`);
+        throw new BadRequestException('Current password is incorrect');
+      }
+
+      // Hash the new password
+      const saltRounds = 10;
+      const hashedNewPassword = await bcrypt.hash(changePasswordDto.newPassword, saltRounds);
+
+      // Update the user's password
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedNewPassword },
+      });
+
+      this.logger.debug(`Password changed successfully for user ID: ${userId}`);
+      return { message: 'Password updated successfully' };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      if (error.code === 'P2025') {
+        this.logger.error(`Password change failed: User not found with ID: ${userId}`);
+        throw new NotFoundException(`User not found with ID: ${userId}`);
+      }
+      this.logger.error(`Password change error for user ID ${userId}: ${error.message}`);
+      throw new BadRequestException('Failed to change password: ' + error.message);
     }
   }
 } 

@@ -1,9 +1,11 @@
-import { Controller, Post, UseGuards, Request, Get, Body, Logger } from '@nestjs/common';
+import { Controller, Post, UseGuards, Request, Get, Body, Logger, Patch } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { PublicRoute } from './public.decorator';
 import { RegisterDto, TokenResponseDto } from './dto/auth.dto';
 import { User } from '@prisma/client';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -31,5 +33,15 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto): Promise<Omit<User, 'password'>> {
     this.logger.log(`Registration attempt for: ${registerDto.email}`);
     return this.authService.register(registerDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('change-password')
+  async changePassword(
+    @Request() req,
+    @Body() changePasswordDto: ChangePasswordDto
+  ): Promise<{ message: string }> {
+    this.logger.log(`Password change attempt for user ID: ${req.user.id}`);
+    return this.authService.changePassword(req.user.id, changePasswordDto);
   }
 } 

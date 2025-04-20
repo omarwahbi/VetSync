@@ -58,7 +58,21 @@ interface ClinicUpdateData {
 // Function to fetch all clinics
 const fetchAllClinics = async (): Promise<Clinic[]> => {
   const response = await axiosInstance.get("/admin/clinics");
-  return response.data;
+  // Log the raw response for debugging
+  console.log("Clinics page - Raw clinic response:", response.data);
+
+  // Handle both response formats - the new one with data & meta, or the old direct array
+  const clinicsData = response.data.data || response.data;
+
+  // Log the extracted clinics data
+  console.log("Clinics page - Extracted clinics data:", clinicsData);
+
+  const clinicsList = Array.isArray(clinicsData) ? clinicsData : [];
+
+  // Log the final list
+  console.log("Clinics page - Final clinics list:", clinicsList);
+
+  return clinicsList;
 };
 
 // Function to create a new clinic

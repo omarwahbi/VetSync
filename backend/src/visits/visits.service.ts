@@ -6,6 +6,7 @@ import { CreateVisitDto } from './dto/create-visit.dto';
 import { UpdateVisitDto } from './dto/update-visit.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilterVisitDto } from './dto/filter-visit.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class VisitsService {
@@ -104,7 +105,7 @@ export class VisitsService {
     });
   }
 
-  async findUpcoming(user: { clinicId: string }) {
+  async findUpcoming(user: { clinicId?: string | null; role?: string }) {
     // Get current date
     const today = new Date();
     // Set to start of day (midnight)
@@ -116,7 +117,47 @@ export class VisitsService {
     // Set to end of day
     thirtyDaysFromNow.setHours(23, 59, 59, 999);
     
-    // Find all upcoming visits based on nextReminderDate
+    // For admin users without a clinicId, return visits from all clinics
+    if (user.role === 'ADMIN' && !user.clinicId) {
+      return this.prisma.visit.findMany({
+        where: {
+          nextReminderDate: {
+            gte: today,
+            lte: thirtyDaysFromNow,
+          },
+        },
+        include: {
+          pet: {
+            select: {
+              id: true,
+              name: true,
+              owner: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  clinic: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          nextReminderDate: 'asc',
+        },
+        take: 10, // Limit to 10 results for better dashboard performance
+      });
+    }
+    
+    // For regular users, ensure clinicId is not null or undefined before using it
+    if (!user.clinicId) {
+      throw new Error('Clinic ID is required for non-admin users');
+    }
+    
+    // For regular users, filter by clinicId
     return this.prisma.visit.findMany({
       where: {
         nextReminderDate: {
@@ -150,18 +191,31 @@ export class VisitsService {
     });
   }
 
-  async findAllClinicVisits(user: { clinicId: string }, filterDto: FilterVisitDto) {
+  async findAllClinicVisits(user: { clinicId?: string | null; role?: string }, filterDto: FilterVisitDto) {
     const { page = 1, limit = 20, startDate, endDate, visitType, search } = filterDto;
     const skip = (page - 1) * limit;
 
     // Build the base where clause
-    const whereClause: any = {
-      pet: {
-        owner: {
-          clinicId: user.clinicId,
-        },
-      },
-    };
+    let whereClause: Prisma.VisitWhereInput = {};
+    
+    // For admin users without a clinicId, don't filter by clinic
+    if (user.role !== 'ADMIN' || user.clinicId) {
+      // For non-admin users, ensure clinicId exists
+      if (user.role !== 'ADMIN' && !user.clinicId) {
+        throw new Error('Clinic ID is required for non-admin users');
+      }
+      
+      // Only add clinicId to the where clause if it exists
+      if (user.clinicId) {
+        whereClause = {
+          pet: {
+            owner: {
+              clinicId: user.clinicId,
+            },
+          },
+        };
+      }
+    }
 
     // Add date range filter if provided
     if (startDate && endDate) {
@@ -184,27 +238,37 @@ export class VisitsService {
       whereClause.visitType = visitType;
     }
 
-    // Add search filter across pet names, owner names, and notes
+    // Add search filter using multi-word search logic
     if (search) {
-      whereClause.OR = [
-        { pet: { name: { contains: search, mode: 'insensitive' } } },
-        { pet: { owner: { firstName: { contains: search, mode: 'insensitive' } } } },
-        { pet: { owner: { lastName: { contains: search, mode: 'insensitive' } } } },
-        { notes: { contains: search, mode: 'insensitive' } },
-      ];
+      const searchTerms = search.trim().split(/\s+/); // Split search string into words
+
+      // We need ALL search terms to match somewhere (using AND)
+      whereClause.AND = (whereClause.AND || []) as Prisma.VisitWhereInput[];
+      searchTerms.forEach(term => {
+        // For each term, add an OR condition checking across fields
+        (whereClause.AND as Prisma.VisitWhereInput[]).push({
+          OR: [
+            { pet: { name: { contains: term, mode: 'insensitive' } } },
+            { pet: { owner: { firstName: { contains: term, mode: 'insensitive' } } } },
+            { pet: { owner: { lastName: { contains: term, mode: 'insensitive' } } } },
+            { notes: { contains: term, mode: 'insensitive' } },
+            { visitType: { contains: term, mode: 'insensitive' } },
+          ],
+        });
+      });
     }
 
     // Get total count of records matching the where clause
-    const totalCount = await this.prisma.visit.count({
-      where: whereClause,
-    });
-
-    // Find paginated visits with filters
+    const totalCount = await this.prisma.visit.count({ where: whereClause });
+    
+    // Get paginated visits matching the where clause
     const visits = await this.prisma.visit.findMany({
       where: whereClause,
       include: {
         pet: {
-          include: {
+          select: {
+            id: true, 
+            name: true,
             owner: {
               select: {
                 id: true,
@@ -216,19 +280,18 @@ export class VisitsService {
         },
       },
       orderBy: {
-        visitDate: 'desc', // Most recent visits first
+        visitDate: 'desc',
       },
       skip,
       take: limit,
     });
-
-    // Return paginated response with metadata
+    
     return {
       data: visits,
-      meta: {
+      pagination: {
         totalCount,
-        currentPage: page,
-        perPage: limit,
+        page,
+        limit,
         totalPages: Math.ceil(totalCount / limit),
       },
     };
