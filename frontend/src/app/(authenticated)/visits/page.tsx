@@ -108,10 +108,10 @@ interface Visit {
 // Interface for API response
 interface VisitsResponse {
   data: Visit[];
-  meta: {
+  pagination: {
     totalCount: number;
-    currentPage: number;
-    perPage: number;
+    page: number;
+    limit: number;
     totalPages: number;
   };
 }
@@ -381,7 +381,7 @@ export default function VisitsPage() {
 
   // Extract visits and metadata
   const visits = response?.data || [];
-  const meta = response?.meta;
+  const pagination = response?.pagination;
 
   // Function to clear all filters
   const clearFilters = () => {
@@ -485,10 +485,10 @@ export default function VisitsPage() {
                   Clear all filters
                 </Button>
                 <div className="ml-4 text-sm text-muted-foreground">
-                  {meta?.totalCount !== undefined && (
+                  {pagination && pagination.totalCount !== undefined && (
                     <span>
-                      {meta.totalCount}{" "}
-                      {meta.totalCount === 1 ? "visit" : "visits"} found
+                      {pagination.totalCount}{" "}
+                      {pagination.totalCount === 1 ? "visit" : "visits"} found
                     </span>
                   )}
                 </div>
@@ -519,7 +519,10 @@ export default function VisitsPage() {
                 </TableHeader>
                 <TableBody className="divide-y">
                   {Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={`skeleton-${index}`}>
+                    <TableRow
+                      key={`skeleton-${index}`}
+                      className="hover:bg-muted/50"
+                    >
                       <TableCell className="text-muted-foreground">
                         <Skeleton className="h-4 w-28" />
                       </TableCell>
@@ -569,8 +572,8 @@ export default function VisitsPage() {
           ) : visits.length > 0 ? (
             <Table className="w-full">
               <TableCaption className="text-sm text-muted-foreground">
-                Showing page {meta?.currentPage} of {meta?.totalPages} (
-                {meta?.totalCount} total visits)
+                Showing page {pagination?.page} of {pagination?.totalPages} (
+                {pagination?.totalCount} total visits)
               </TableCaption>
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-muted/50">
@@ -687,12 +690,12 @@ export default function VisitsPage() {
           )}
 
           {/* Pagination */}
-          {meta && meta.totalPages > 1 && (
+          {pagination && pagination.totalPages > 1 && (
             <div className="px-6 py-6 border-t">
               <div className="flex flex-col items-center">
                 <div className="text-sm text-muted-foreground mb-3">
-                  Page {meta.currentPage} of {meta.totalPages} (
-                  {meta.totalCount} total visits)
+                  Page {pagination.page} of {pagination.totalPages} (
+                  {pagination.totalCount} total visits)
                 </div>
 
                 <Pagination>
@@ -704,9 +707,9 @@ export default function VisitsPage() {
                           e.preventDefault();
                           setPage((p) => Math.max(1, p - 1));
                         }}
-                        aria-disabled={meta.currentPage <= 1}
+                        aria-disabled={pagination.page <= 1}
                         className={
-                          meta.currentPage <= 1
+                          pagination.page <= 1
                             ? "pointer-events-none opacity-50"
                             : ""
                         }
@@ -714,51 +717,53 @@ export default function VisitsPage() {
                     </PaginationItem>
 
                     {/* Generate page numbers */}
-                    {Array.from({ length: Math.min(5, meta.totalPages) }).map(
-                      (_, i) => {
-                        // Logic to show pages around current page
-                        let pageNum;
-                        if (meta.totalPages <= 5) {
-                          // If 5 or fewer pages, show all page numbers
-                          pageNum = i + 1;
-                        } else if (meta.currentPage <= 3) {
-                          // If near the start, show first 5 pages
-                          pageNum = i + 1;
-                        } else if (meta.currentPage >= meta.totalPages - 2) {
-                          // If near the end, show last 5 pages
-                          pageNum = meta.totalPages - 4 + i;
-                        } else {
-                          // Otherwise show current page and 2 pages before and after
-                          pageNum = meta.currentPage - 2 + i;
-                        }
-
-                        return (
-                          <PaginationItem key={pageNum}>
-                            <PaginationLink
-                              href="#"
-                              isActive={pageNum === meta.currentPage}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setPage(pageNum);
-                              }}
-                            >
-                              {pageNum}
-                            </PaginationLink>
-                          </PaginationItem>
-                        );
+                    {Array.from({
+                      length: Math.min(5, pagination.totalPages),
+                    }).map((_, i) => {
+                      // Logic to show pages around current page
+                      let pageNum;
+                      if (pagination.totalPages <= 5) {
+                        // If 5 or fewer pages, show all page numbers
+                        pageNum = i + 1;
+                      } else if (pagination.page <= 3) {
+                        // If near the start, show first 5 pages
+                        pageNum = i + 1;
+                      } else if (pagination.page >= pagination.totalPages - 2) {
+                        // If near the end, show last 5 pages
+                        pageNum = pagination.totalPages - 4 + i;
+                      } else {
+                        // Otherwise show current page and 2 pages before and after
+                        pageNum = pagination.page - 2 + i;
                       }
-                    )}
+
+                      return (
+                        <PaginationItem key={pageNum}>
+                          <PaginationLink
+                            href="#"
+                            isActive={pageNum === pagination.page}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(pageNum);
+                            }}
+                          >
+                            {pageNum}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
 
                     <PaginationItem>
                       <PaginationNext
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          setPage((p) => Math.min(meta.totalPages, p + 1));
+                          setPage((p) =>
+                            Math.min(pagination.totalPages, p + 1)
+                          );
                         }}
-                        aria-disabled={meta.currentPage >= meta.totalPages}
+                        aria-disabled={pagination.page >= pagination.totalPages}
                         className={
-                          meta.currentPage >= meta.totalPages
+                          pagination.page >= pagination.totalPages
                             ? "pointer-events-none opacity-50"
                             : ""
                         }

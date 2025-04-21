@@ -74,7 +74,16 @@ export default function LoginPage() {
   const fetchAndSetUser = async () => {
     try {
       const response = await axiosInstance.get("/auth/profile");
-      const user = response.data;
+      const userData = response.data;
+      console.log("User profile data:", userData);
+
+      // Ensure user data has the expected structure
+      const user = {
+        ...userData,
+        // Ensure clinic data is properly structured
+        clinic: userData.clinic || null,
+      };
+
       setUser(user);
       return true;
     } catch (error) {

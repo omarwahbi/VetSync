@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { User, UserRole } from '@prisma/client';
+import { User, UserRole, UserSession } from '@prisma/client';
 import { RegisterDto, TokenResponseDto } from './dto/auth.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
@@ -19,6 +19,17 @@ interface JwtPayload {
 interface RefreshTokenPayload {
   sub: string;
 }
+
+type UserSessionWithRelations = UserSession & {
+  user: User & {
+    clinic: {
+      id: string;
+      name: string;
+      isActive: boolean;
+      subscriptionEndDate: Date | null;
+    } | null;
+  };
+};
 
 @Injectable()
 export class AuthService {
@@ -59,7 +70,7 @@ export class AuthService {
     return result;
   }
 
-  async login(user: UserWithoutPassword): Promise<TokenResponseDto> {
+  async login(user: UserWithoutPassword, ipAddress?: string, userAgent?: string): Promise<TokenResponseDto> {
     this.logger.debug(`Generating tokens for user: ${user.email}`);
     
     // Get configuration values
@@ -96,10 +107,37 @@ export class AuthService {
     // Hash the refresh token before storing
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
     
-    // Store the hashed refresh token in the user record
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { hashedRefreshToken },
+    // Calculate expiry date for the refresh token
+    const refreshExpiresIn = refreshTokenExpiresIn || '7d';
+    const expiresAt = new Date();
+
+    // Add the appropriate time based on the string format
+    if (refreshExpiresIn.endsWith('d')) {
+      const days = parseInt(refreshExpiresIn.replace('d', ''), 10);
+      expiresAt.setDate(expiresAt.getDate() + days);
+    } else if (refreshExpiresIn.endsWith('h')) {
+      const hours = parseInt(refreshExpiresIn.replace('h', ''), 10);
+      expiresAt.setHours(expiresAt.getHours() + hours);
+    } else if (refreshExpiresIn.endsWith('m')) {
+      const minutes = parseInt(refreshExpiresIn.replace('m', ''), 10);
+      expiresAt.setMinutes(expiresAt.getMinutes() + minutes);
+    } else if (refreshExpiresIn.endsWith('s')) {
+      const seconds = parseInt(refreshExpiresIn.replace('s', ''), 10);
+      expiresAt.setSeconds(expiresAt.getSeconds() + seconds);
+    } else {
+      // Default to 7 days if format is unrecognized
+      expiresAt.setDate(expiresAt.getDate() + 7);
+    }
+    
+    // Create a new session record
+    await this.prisma.userSession.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashedRefreshToken,
+        expiresAt,
+        ipAddress,
+        userAgent,
+      },
     });
     
     this.logger.debug(`Tokens generated successfully for user: ${user.email}`);
@@ -118,79 +156,114 @@ export class AuthService {
     };
   }
 
-  async validateRefreshTokenAndSubscription(userId: string, providedRefreshToken: string): Promise<User> {
-    this.logger.debug(`Validating refresh token for user ID: ${userId}`);
+  async findSessionByTokenHash(tokenHash: string): Promise<UserSessionWithRelations | null> {
+    this.logger.debug('Finding session by token hash');
     
     try {
-      // Fetch user with clinic relation
-      const user = await this.prisma.user.findUniqueOrThrow({
-        where: { id: userId },
-        include: { clinic: true },
+      const session = await this.prisma.userSession.findUnique({
+        where: { tokenHash },
+        include: {
+          user: {
+            include: {
+              clinic: true
+            }
+          }
+        }
       });
       
-      // Check if refresh token exists
-      if (!user.hashedRefreshToken) {
-        this.logger.warn(`No active refresh token found for user ID: ${userId}`);
-        throw new UnauthorizedException('No active refresh token found.');
-      }
-      
-      // Verify refresh token
-      const isRefreshTokenValid = await bcrypt.compare(
-        providedRefreshToken,
-        user.hashedRefreshToken
-      );
-      
-      if (!isRefreshTokenValid) {
-        this.logger.warn(`Invalid refresh token for user ID: ${userId}`);
-        throw new UnauthorizedException('Invalid refresh token.');
-      }
-      
-      // Check clinic subscription status (skip for admins)
-      if (user.role !== UserRole.ADMIN) {
-        const clinic = user.clinic;
-        
-        if (!clinic || !clinic.isActive || 
-            !clinic.subscriptionEndDate || 
-            clinic.subscriptionEndDate < new Date()) {
-          
-          // Subscription inactive or expired, remove refresh token
-          await this.removeRefreshToken(userId);
-          
-          this.logger.warn(`Clinic subscription inactive or expired for user ID: ${userId}`);
-          throw new UnauthorizedException('Clinic subscription inactive or expired.');
-        }
-      }
-      
-      this.logger.debug(`Refresh token validated successfully for user ID: ${userId}`);
-      return user;
+      return session;
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      
-      if (error.code === 'P2025') {
-        this.logger.error(`User not found with ID: ${userId}`);
-        throw new UnauthorizedException('Invalid refresh token.');
-      }
-      
-      this.logger.error(`Error validating refresh token: ${error.message}`);
-      throw new UnauthorizedException('Invalid refresh token.');
+      this.logger.error(`Error finding session: ${error.message}`);
+      return null;
     }
   }
   
-  async removeRefreshToken(userId: string): Promise<void> {
-    this.logger.debug(`Removing refresh token for user ID: ${userId}`);
+  async deleteSessionByTokenHash(tokenHash: string): Promise<void> {
+    this.logger.debug('Deleting session by token hash');
     
     try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { hashedRefreshToken: null },
+      await this.prisma.userSession.deleteMany({
+        where: { tokenHash }
       });
       
-      this.logger.debug(`Refresh token removed successfully for user ID: ${userId}`);
+      this.logger.debug('Session deleted successfully');
     } catch (error) {
-      this.logger.error(`Error removing refresh token: ${error.message}`);
-      throw new BadRequestException('Failed to remove refresh token.');
+      this.logger.error(`Error deleting session: ${error.message}`);
+      throw new BadRequestException('Failed to delete session');
+    }
+  }
+  
+  async revokeRefreshToken(userId: string, refreshToken: string): Promise<void> {
+    this.logger.debug(`Revoking refresh token for user ID: ${userId}`);
+    
+    if (!refreshToken) {
+      this.logger.warn('No refresh token provided for revocation');
+      return;
+    }
+    
+    try {
+      // Find all sessions for this user
+      const userSessions = await this.prisma.userSession.findMany({
+        where: { userId }
+      });
+      
+      // Find the session with the matching refresh token
+      for (const session of userSessions) {
+        const isMatch = await bcrypt.compare(refreshToken, session.tokenHash);
+        if (isMatch) {
+          // Delete the matching session
+          await this.prisma.userSession.delete({
+            where: { id: session.id }
+          });
+          this.logger.debug('Refresh token revoked successfully');
+          return;
+        }
+      }
+      
+      this.logger.debug('No matching refresh token found to revoke');
+    } catch (error) {
+      this.logger.error(`Error revoking refresh token: ${error.message}`);
+      throw new BadRequestException('Failed to revoke refresh token');
+    }
+  }
+  
+  async rotateRefreshToken(
+    userId: string, 
+    oldTokenHash: string, 
+    newRefreshToken: string, 
+    newRefreshTokenExpiresAt: Date, 
+    ipAddress?: string, 
+    userAgent?: string
+  ): Promise<void> {
+    this.logger.debug(`Rotating refresh token for user ID: ${userId}`);
+    
+    // Hash the new refresh token
+    const hashedNewToken = await bcrypt.hash(newRefreshToken, 10);
+    
+    try {
+      // Use a transaction to ensure atomicity
+      await this.prisma.$transaction([
+        // Delete the old session
+        this.prisma.userSession.deleteMany({
+          where: { tokenHash: oldTokenHash }
+        }),
+        
+        // Create the new session
+        this.prisma.userSession.create({
+          data: {
+            userId,
+            tokenHash: hashedNewToken,
+            expiresAt: newRefreshTokenExpiresAt,
+            ipAddress,
+            userAgent,
+          }
+        })
+      ]);
+      
+      this.logger.debug('Refresh token rotated successfully');
+    } catch (error) {
+      this.logger.error(`Error rotating refresh token: ${error.message}`);
+      throw new BadRequestException('Failed to rotate refresh token');
     }
   }
 

@@ -1,12 +1,22 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+interface ClinicInfo {
+  id: string;
+  name: string;
+  canSendReminders: boolean;
+  isActive?: boolean;
+  subscriptionEndDate?: string;
+}
+
 interface User {
+  id?: string;
   email?: string;
   role?: string;
   clinicId?: string;
   firstName?: string;
   lastName?: string;
+  clinic?: ClinicInfo | null;
 }
 
 interface AuthState {

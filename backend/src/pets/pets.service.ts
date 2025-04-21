@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePetDto } from './dto/create-pet.dto';
 import { UpdatePetDto } from './dto/update-pet.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -45,9 +45,21 @@ export class PetsService {
       });
     }
 
-    // Return the filtered pets with their owners
-    return this.prisma.pet.findMany({
+    // Calculate pagination parameters
+    const page = filterPetDto?.page ?? 1;
+    const limit = filterPetDto?.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination metadata
+    const totalCount = await this.prisma.pet.count({
       where: whereClause,
+    });
+
+    // Fetch the paginated pets with their owners
+    const pets = await this.prisma.pet.findMany({
+      where: whereClause,
+      skip,
+      take: limit,
       include: {
         owner: {
           select: {
@@ -59,6 +71,20 @@ export class PetsService {
       },
       orderBy: { name: 'asc' },
     });
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Return structured response with pagination metadata
+    return {
+      data: pets,
+      meta: {
+        totalCount,
+        currentPage: page,
+        perPage: limit,
+        totalPages,
+      },
+    };
   }
 
   async create(createPetDto: CreatePetDto, ownerId: string, user: { clinicId: string }) {
@@ -83,7 +109,7 @@ export class PetsService {
     });
   }
 
-  async findAll(ownerId: string, user: { clinicId: string }) {
+  async findAll(ownerId: string, user: { clinicId: string }, filterPetDto?: FilterPetDto) {
     // First verify the owner exists and belongs to the user's clinic
     const owner = await this.prisma.owner.findFirst({
       where: {
@@ -96,15 +122,45 @@ export class PetsService {
       throw new NotFoundException(`Owner with ID ${ownerId} not found in your clinic`);
     }
 
-    // Find all pets for the verified owner
-    return this.prisma.pet.findMany({
-      where: {
-        ownerId,
-        owner: {
-          clinicId: user.clinicId,
-        },
+    // Define the where clause for finding pets
+    const whereClause = {
+      ownerId,
+      owner: {
+        clinicId: user.clinicId,
       },
+    };
+
+    // Calculate pagination parameters
+    const page = filterPetDto?.page ?? 1;
+    const limit = filterPetDto?.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination metadata
+    const totalCount = await this.prisma.pet.count({
+      where: whereClause,
     });
+
+    // Find all pets for the verified owner with pagination
+    const pets = await this.prisma.pet.findMany({
+      where: whereClause,
+      skip,
+      take: limit,
+      orderBy: { name: 'asc' },
+    });
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Return structured response with pagination metadata
+    return {
+      data: pets,
+      meta: {
+        totalCount,
+        currentPage: page,
+        perPage: limit,
+        totalPages,
+      },
+    };
   }
 
   async findOne(id: string, ownerId: string, user: { clinicId: string }) {

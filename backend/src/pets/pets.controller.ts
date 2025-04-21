@@ -55,8 +55,12 @@ export class PetsController {
   }
 
   @Get()
-  findAll(@Param('ownerId') ownerId: string, @Request() req: { user: any }) {
-    return this.petsService.findAll(ownerId, req.user);
+  findAll(
+    @Param('ownerId') ownerId: string, 
+    @Query() filterPetDto: FilterPetDto,
+    @Request() req: { user: any }
+  ) {
+    return this.petsService.findAll(ownerId, req.user, filterPetDto);
   }
 
   @Get(':id')

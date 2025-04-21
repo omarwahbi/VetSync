@@ -36,7 +36,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // Find the user with clinic data included
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
-        include: { clinic: true },
+        include: { 
+          clinic: {
+            select: {
+              id: true,
+              name: true,
+              isActive: true,
+              subscriptionEndDate: true,
+              canSendReminders: true,
+            }
+          } 
+        },
       });
 
       // Validate user exists

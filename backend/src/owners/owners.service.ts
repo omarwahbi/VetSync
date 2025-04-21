@@ -53,10 +53,37 @@ export class OwnersService {
       });
     }
 
-    return this.prisma.owner.findMany({
+    // Calculate pagination parameters
+    const page = filterOwnerDto?.page ?? 1;
+    const limit = filterOwnerDto?.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination metadata
+    const totalCount = await this.prisma.owner.count({
       where: whereClause,
+    });
+
+    // Fetch the paginated data
+    const owners = await this.prisma.owner.findMany({
+      where: whereClause,
+      skip,
+      take: limit,
       orderBy: { lastName: 'asc' },
     });
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Return structured response with pagination metadata
+    return {
+      data: owners,
+      meta: {
+        totalCount,
+        currentPage: page,
+        perPage: limit,
+        totalPages,
+      },
+    };
   }
 
   async findOne(id: string, user: { clinicId: string }) {

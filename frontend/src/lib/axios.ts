@@ -44,7 +44,7 @@ axiosInstance.interceptors.response.use(
         console.error('Error refreshing token:', refreshError);
         
         // Clear auth state and redirect to login
-        useAuthStore.getState().logout();
+      useAuthStore.getState().logout();
         window.location.href = '/login';
         
         return Promise.reject(refreshError);

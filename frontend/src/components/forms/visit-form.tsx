@@ -6,6 +6,7 @@ import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { addMonths, addYears } from "date-fns";
+import { useAuthStore } from "@/store/auth";
 
 import {
   Form,
@@ -106,6 +107,11 @@ export function VisitForm({
   console.log("VisitForm received initialData:", initialData);
   console.log("VisitForm received selectedPetData:", selectedPetData);
 
+  // Get clinic reminder settings from auth store
+  const clinicCanSendReminders = useAuthStore(
+    (state) => state.user?.clinic?.canSendReminders ?? false
+  );
+
   // Determine if owner allows reminders
   const ownerAllowsReminders =
     // If editing (initialData exists), check from initialData
@@ -115,16 +121,13 @@ export function VisitForm({
     // Default to true if data structure is missing
     true;
 
-  // Debug log for owner reminders preference
+  // Combined permission check - both clinic and owner need to allow reminders
+  const remindersAllowed = clinicCanSendReminders && ownerAllowsReminders;
+
+  // Debug log for reminders settings
+  console.log("Clinic can send reminders:", clinicCanSendReminders);
   console.log("Owner allows reminders:", ownerAllowsReminders);
-  console.log(
-    "Source:",
-    initialData?.pet?.owner?.allowAutomatedReminders !== undefined
-      ? "initialData"
-      : selectedPetData?.owner?.allowAutomatedReminders !== undefined
-      ? "selectedPetData"
-      : "default value"
-  );
+  console.log("Reminders allowed:", remindersAllowed);
 
   // --- Refined Default Value Logic ---
   // Extract only the form fields from initialData
@@ -153,8 +156,8 @@ export function VisitForm({
             ? formFields.nextReminderDate
             : undefined,
         // Explicitly set boolean, falling back to true if undefined in initialData
-        // Also consider owner's preference - if they opted out, force to false
-        isReminderEnabled: ownerAllowsReminders
+        // Also consider owner's preference and clinic settings - if either opted out, force to false
+        isReminderEnabled: remindersAllowed
           ? formFields.isReminderEnabled ?? true
           : false,
         // Handle price - parse if it's a string from API
@@ -170,7 +173,7 @@ export function VisitForm({
         visitDate: new Date(),
         visitType: "",
         notes: "",
-        isReminderEnabled: ownerAllowsReminders, // Set based on owner preference
+        isReminderEnabled: remindersAllowed, // Set based on both clinic and owner preferences
         nextReminderDate: undefined,
         price: null,
       };
@@ -190,12 +193,12 @@ export function VisitForm({
     }
   }, [form]);
 
-  // Force isReminderEnabled to false if owner opted out of reminders
+  // Force isReminderEnabled to false if reminders are not allowed
   useEffect(() => {
-    if (!ownerAllowsReminders) {
+    if (!remindersAllowed) {
       form.setValue("isReminderEnabled", false, { shouldValidate: true });
     }
-  }, [ownerAllowsReminders, form]);
+  }, [remindersAllowed, form]);
 
   const handleSubmit = (data: unknown) => {
     const visitData = data as VisitFormValues;
@@ -363,11 +366,13 @@ export function VisitForm({
           <div>
             <FormLabel className="">Reminder Settings</FormLabel>
             <FormDescription className="">
-              Configure the next reminder for this pet
+              {clinicCanSendReminders
+                ? "Configure the next reminder for this pet"
+                : "Automated reminders are not enabled for this clinic"}
             </FormDescription>
           </div>
 
-          {/* Always show the next reminder date field, but validate based on isReminderEnabled */}
+          {/* Show next reminder date field regardless of reminder status */}
           <FormField
             control={form.control}
             name="nextReminderDate"
@@ -379,9 +384,10 @@ export function VisitForm({
               <FormItem className="flex flex-col">
                 <FormLabel className="">
                   Next Visit Date{" "}
-                  {form.watch("isReminderEnabled") && (
-                    <span className="text-red-500">*</span>
-                  )}
+                  {clinicCanSendReminders &&
+                    form.watch("isReminderEnabled") && (
+                      <span className="text-red-500">*</span>
+                    )}
                 </FormLabel>
                 <FormControl>
                   <DatePicker
@@ -390,8 +396,10 @@ export function VisitForm({
                   />
                 </FormControl>
                 <FormDescription className="">
-                  {!ownerAllowsReminders
-                    ? "Visit date will be recorded but no automated reminder will be sent"
+                  {!clinicCanSendReminders
+                    ? "Automated reminders are not enabled for this clinic"
+                    : !ownerAllowsReminders
+                    ? "Owner has opted out of automated reminders"
                     : form.watch("isReminderEnabled")
                     ? "Send automated reminder on this date"
                     : "No automated reminder will be sent, but date is still recorded"}
@@ -437,42 +445,47 @@ export function VisitForm({
             </Button>
           </div>
 
-          <FormField
-            control={form.control}
-            name="isReminderEnabled"
-            render={({
-              field,
-            }: {
-              field: ControllerRenderProps<
-                VisitFormValues,
-                "isReminderEnabled"
-              >;
-            }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={!ownerAllowsReminders}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel
-                    className={
-                      !ownerAllowsReminders ? "text-muted-foreground" : ""
-                    }
-                  >
-                    Enable Reminder
-                  </FormLabel>
-                  <FormDescription className="">
-                    {ownerAllowsReminders
-                      ? "Send a reminder for follow-up"
-                      : "Owner has opted out of automated reminders"}
-                  </FormDescription>
-                </div>
-              </FormItem>
-            )}
-          />
+          {/* Only show the checkbox if clinic can send reminders */}
+          {clinicCanSendReminders && (
+            <FormField
+              control={form.control}
+              name="isReminderEnabled"
+              render={({
+                field,
+              }: {
+                field: ControllerRenderProps<
+                  VisitFormValues,
+                  "isReminderEnabled"
+                >;
+              }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={!remindersAllowed}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel
+                      className={
+                        !remindersAllowed ? "text-muted-foreground" : ""
+                      }
+                    >
+                      Enable Reminder
+                    </FormLabel>
+                    <FormDescription className="">
+                      {remindersAllowed
+                        ? "Send a reminder for follow-up"
+                        : ownerAllowsReminders
+                        ? "Automated reminders are disabled for this clinic"
+                        : "Owner has opted out of automated reminders"}
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {!hideButtons && (

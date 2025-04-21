@@ -13,6 +13,7 @@ import {
   X,
   MapPin,
 } from "lucide-react";
+import { useAuthStore } from "@/store/auth";
 
 import {
   Form,
@@ -68,6 +69,11 @@ export function OwnerForm({
   isLoading = false,
   hideButtons = false,
 }: OwnerFormProps) {
+  // Get clinic reminder settings from auth store
+  const clinicCanSendReminders = useAuthStore(
+    (state) => state.user?.clinic?.canSendReminders ?? false
+  );
+
   const form = useForm<OwnerFormValues>({
     resolver: zodResolver(ownerSchema),
     defaultValues: {
@@ -104,7 +110,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="firstName"
-          render={({ field }) => (
+          render={({ field }: { field: any }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -121,7 +127,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="lastName"
-          render={({ field }) => (
+          render={({ field }: { field: any }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -138,7 +144,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="email"
-          render={({ field }) => (
+          render={({ field }: { field: any }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
@@ -150,7 +156,7 @@ export function OwnerForm({
                   placeholder="john.doe@example.com"
                   {...field}
                   value={field.value || ""}
-                  onChange={(e) => {
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     const value = e.target.value;
                     field.onChange(value === "" ? null : value);
                   }}
@@ -164,7 +170,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="phone"
-          render={({ field }) => (
+          render={({ field }: { field: any }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
@@ -185,7 +191,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="address"
-          render={({ field }) => (
+          render={({ field }: { field: any }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
@@ -207,22 +213,28 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="allowAutomatedReminders"
-          render={({ field }) => (
+          render={({ field }: { field: any }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
               <FormControl>
                 <Checkbox
                   checked={field.value}
                   onCheckedChange={field.onChange}
+                  disabled={!clinicCanSendReminders}
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel className="flex items-center gap-2">
+                <FormLabel
+                  className={`flex items-center gap-2 ${
+                    !clinicCanSendReminders ? "text-muted-foreground" : ""
+                  }`}
+                >
                   <Bell className="h-4 w-4" />
                   Allow Automated Reminders
                 </FormLabel>
                 <FormDescription className="text-sm text-muted-foreground">
-                  Send automated reminders to this owner for upcoming pet
-                  visits.
+                  {clinicCanSendReminders
+                    ? "Allow this owner to receive automated reminders (if enabled for the specific visit)."
+                    : "Automated reminders are currently disabled for this clinic's subscription plan."}
                 </FormDescription>
               </div>
               <FormMessage className="text-sm" />

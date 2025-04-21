@@ -31,21 +31,23 @@ model Clinic {
 }
 
 model User {
-  id                 String   @id @default(cuid())
-  email              String   @unique
-  password           String // Store hashed password
-  firstName          String?
-  lastName           String?
-  role               UserRole @default(STAFF) // Enum for roles
-  isActive           Boolean  @default(true) // User account status (different from clinic subscription)
-  hashedRefreshToken String?  @unique // Store hashed refresh token
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String // Store hashed password
+  firstName String?
+  lastName  String?
+  role      UserRole @default(STAFF) // Enum for roles
+  isActive  Boolean  @default(true) // User account status (different from clinic subscription)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relation: Each user belongs to at most one clinic
   // Platform admins can have null clinicId
   clinicId String?
   clinic   Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relation: A user can have many sessions
+  sessions UserSession[]
 
   @@index([clinicId]) // Index for faster lookups by clinic
 }
@@ -116,4 +118,18 @@ model Visit {
 
   @@index([petId]) // Index for faster lookups by pet
   @@index([nextReminderDate]) // Index for efficient querying of reminders
+}
+
+model UserSession {
+  id        String   @id @default(cuid()) // Use CUID or UUID
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique // Store the hashed refresh token
+  expiresAt DateTime // Expiry date of this specific refresh token
+  ipAddress String? // Optional: Store IP for auditing
+  userAgent String? // Optional: Store User Agent for auditing
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId]) // Index for faster lookup by user
 }
