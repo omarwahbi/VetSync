@@ -10,17 +10,21 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, token } = useAuthStore();
+  // Use individual selectors to avoid unnecessary rerenders
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const accessToken = useAuthStore((state) => state.accessToken);
+
   const router = useRouter();
 
   useEffect(() => {
     // Only run redirection logic after state has been rehydrated
     if (!isLoading) {
-      if (!isAuthenticated && !token) {
+      if (!isAuthenticated && !accessToken) {
         router.push("/login");
       }
     }
-  }, [isAuthenticated, isLoading, token, router]);
+  }, [isAuthenticated, isLoading, accessToken, router]);
 
   // Show loading state while authentication is being determined
   if (isLoading) {

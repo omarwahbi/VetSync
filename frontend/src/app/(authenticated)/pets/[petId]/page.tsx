@@ -172,7 +172,7 @@ export default function PetDetailsPage() {
 
   // Update pet mutation
   const { mutate: updatePet, isPending: isUpdatingPet } = useMutation({
-    mutationFn: async (formData: any) => {
+    mutationFn: async (formData: PetFormValues) => {
       const response = await axiosInstance.patch(
         `/owners/${petData?.owner?.id}/pets/${petId}`,
         formData
@@ -324,10 +324,7 @@ export default function PetDetailsPage() {
     const formattedData = {
       ...formData,
       // Convert dates to ISO strings for API if needed
-      birthDate:
-        formData.birthDate instanceof Date
-          ? formData.birthDate.toISOString()
-          : formData.birthDate,
+      birthDate: formData.birthDate ? formData.birthDate : null,
     };
 
     updatePet(formattedData);
@@ -685,7 +682,7 @@ export default function PetDetailsPage() {
                           <DropdownMenuItem
                             className="cursor-pointer text-red-600"
                             inset={false}
-                            onClick={(e) => {
+                            onClick={(e: React.MouseEvent) => {
                               e.preventDefault();
                               setDeletingVisit(visit);
                             }}

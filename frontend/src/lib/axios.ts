@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/auth';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:3000/',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/',
   withCredentials: true, // Essential for sending cookies with requests
 });
 
@@ -44,8 +44,12 @@ axiosInstance.interceptors.response.use(
         console.error('Error refreshing token:', refreshError);
         
         // Clear auth state and redirect to login
-      useAuthStore.getState().logout();
-        window.location.href = '/login';
+        useAuthStore.getState().logout();
+        
+        // Use more reliable approach for navigation in server components
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
         
         return Promise.reject(refreshError);
       }

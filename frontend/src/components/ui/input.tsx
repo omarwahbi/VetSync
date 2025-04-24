@@ -1,14 +1,13 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
-function Input({
-  className,
-  type,
-  ...props
-}) {
+const Input = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(({ className, type = "text", ...props }, ref) => {
   return (
-    (<input
+    <input
       type={type}
       data-slot="input"
       className={cn(
@@ -17,8 +16,12 @@ function Input({
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         className
       )}
-      {...props} />)
+      ref={ref}
+      {...props}
+    />
   );
-}
+});
 
-export { Input }
+Input.displayName = "Input";
+
+export { Input };

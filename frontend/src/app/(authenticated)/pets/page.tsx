@@ -113,7 +113,17 @@ interface ErrorResponse {
 const ITEMS_PER_PAGE = 10;
 
 // Function to fetch all owners
-const fetchOwners = async (): Promise<Owner[]> => {
+interface OwnersResponse {
+  data: Owner[];
+  meta: {
+    totalCount: number;
+    currentPage: number;
+    perPage: number;
+    totalPages: number;
+  };
+}
+
+const fetchOwners = async (): Promise<OwnersResponse> => {
   const response = await axiosInstance.get("/owners");
   return response.data;
 };
@@ -178,10 +188,13 @@ export default function PetsPage() {
   }, [debouncedSearchTerm]);
 
   // Query for fetching all owners (needed for the pet form)
-  const { data: owners = [], isLoading: isLoadingOwners } = useQuery({
+  const { data: ownersResponse, isLoading: isLoadingOwners } = useQuery({
     queryKey: ["owners"],
     queryFn: fetchOwners,
   });
+
+  // Extract owners array from response
+  const owners = ownersResponse?.data || [];
 
   // Query for fetching all pets
   const {

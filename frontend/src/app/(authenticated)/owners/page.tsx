@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import Link from "next/link";
-import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
+import { formatPhoneNumberForWhatsApp } from "@/lib/phoneUtils";
 
 import {
   Dialog,

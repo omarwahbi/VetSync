@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { ControllerRenderProps, useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -46,8 +46,12 @@ interface ErrorResponse {
 export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const { setAccessToken, setUser, isAuthenticated, isLoading } =
-    useAuthStore();
+
+  // Use separate selectors for each state piece to avoid object comparison issues
+  const setAccessToken = useAuthStore((state) => state.setAccessToken);
+  const setUser = useAuthStore((state) => state.setUser);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   // Initialize form - MOVED BEFORE CONDITIONAL RETURN
   const form = useForm<LoginFormValues>({
@@ -60,6 +64,8 @@ export default function LoginPage() {
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     if (!isLoading && isAuthenticated) {
       router.push("/dashboard");
     }
@@ -140,36 +146,50 @@ export default function LoginPage() {
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
+                render={({
+                  field,
+                }: {
+                  field: ControllerRenderProps<LoginFormValues, "email">;
+                }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel className="text-sm">Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="you@example.com" {...field} />
+                      <Input
+                        placeholder="you@example.com"
+                        {...field}
+                        className="w-full"
+                        type="email"
+                      />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-sm text-red-500" />
                   </FormItem>
                 )}
               />
               <FormField
                 control={form.control}
                 name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
+                render={({
+                  field,
+                }: {
+                  field: ControllerRenderProps<LoginFormValues, "password">;
+                }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel className="text-sm">Password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
                         placeholder="••••••••"
                         {...field}
+                        className="w-full"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-sm text-red-500" />
                   </FormItem>
                 )}
               />

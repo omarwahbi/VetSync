@@ -101,7 +101,6 @@ export default function DashboardPage() {
   const {
     data: upcomingVisits = [],
     isLoading,
-    error,
     isError,
   } = useQuery({
     queryKey: ["upcomingVisits"],

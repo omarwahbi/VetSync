@@ -123,10 +123,12 @@ export function PetForm({
   };
 
   // Filter owners based on search query
-  const filteredOwners = owners.filter((owner) => {
-    const fullName = `${owner.firstName} ${owner.lastName}`.toLowerCase();
-    return fullName.includes(ownerSearchQuery.toLowerCase());
-  });
+  const filteredOwners = Array.isArray(owners)
+    ? owners.filter((owner) => {
+        const fullName = `${owner.firstName} ${owner.lastName}`.toLowerCase();
+        return fullName.includes(ownerSearchQuery.toLowerCase());
+      })
+    : [];
 
   return (
     <Form {...form}>

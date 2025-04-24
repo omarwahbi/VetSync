@@ -106,7 +106,12 @@ export function AdminClinicSettingsForm({
             <FormItem>
               <FormLabel>Clinic Name</FormLabel>
               <FormControl>
-                <Input placeholder="Enter clinic name" {...field} />
+                <Input
+                  type="text"
+                  className="w-full"
+                  placeholder="Enter clinic name"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -120,7 +125,12 @@ export function AdminClinicSettingsForm({
             <FormItem>
               <FormLabel>Address</FormLabel>
               <FormControl>
-                <Input placeholder="Enter clinic address" {...field} />
+                <Input
+                  type="text"
+                  className="w-full"
+                  placeholder="Enter clinic address"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -134,7 +144,12 @@ export function AdminClinicSettingsForm({
             <FormItem>
               <FormLabel>Phone Number</FormLabel>
               <FormControl>
-                <Input placeholder="Enter phone number" {...field} />
+                <Input
+                  type="tel"
+                  className="w-full"
+                  placeholder="Enter phone number"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

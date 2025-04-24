@@ -34,13 +34,9 @@ const ownerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z
-    .union([
-      z.string().email("Invalid email format"),
-      z.string().length(0),
-      z.null(),
-    ])
+    .union([z.string().email("Invalid email format"), z.string().length(0)])
     .optional()
-    .transform((val) => (val === "" || val === null ? undefined : val)),
+    .transform((val) => (val === "" ? undefined : val)),
   phone: z
     .string()
     .regex(/^[0-9+\-\s()]*$/, "Invalid phone number format")
@@ -49,7 +45,7 @@ const ownerSchema = z.object({
     .string()
     .max(500, "Address must be less than 500 characters")
     .optional(),
-  allowAutomatedReminders: z.boolean().default(true),
+  allowAutomatedReminders: z.boolean(),
 });
 
 export type OwnerFormValues = z.infer<typeof ownerSchema>;
@@ -110,7 +106,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="firstName"
-          render={({ field }: { field: any }) => (
+          render={({ field }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -127,7 +123,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="lastName"
-          render={({ field }: { field: any }) => (
+          render={({ field }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -144,7 +140,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="email"
-          render={({ field }: { field: any }) => (
+          render={({ field }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
@@ -155,10 +151,10 @@ export function OwnerForm({
                   type="email"
                   placeholder="john.doe@example.com"
                   {...field}
-                  value={field.value || ""}
+                  value={field.value?.toString() || ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     const value = e.target.value;
-                    field.onChange(value === "" ? null : value);
+                    field.onChange(value === "" ? undefined : value);
                   }}
                 />
               </FormControl>
@@ -170,18 +166,14 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="phone"
-          render={({ field }: { field: any }) => (
+          render={({ field }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 Phone Number <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input
-                  placeholder="+1 (555) 123-4567"
-                  {...field}
-                  value={field.value || ""}
-                />
+                <Input placeholder="+1 (555) 123-4567" {...field} />
               </FormControl>
               <FormMessage className="text-sm" />
             </FormItem>
@@ -191,7 +183,7 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="address"
-          render={({ field }: { field: any }) => (
+          render={({ field }) => (
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
@@ -201,7 +193,6 @@ export function OwnerForm({
                 <Textarea
                   placeholder="Enter owner address..."
                   {...field}
-                  value={field.value || ""}
                   className="resize-none min-h-[80px]"
                 />
               </FormControl>
@@ -213,11 +204,11 @@ export function OwnerForm({
         <FormField
           control={form.control}
           name="allowAutomatedReminders"
-          render={({ field }: { field: any }) => (
+          render={({ field }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
               <FormControl>
                 <Checkbox
-                  checked={field.value}
+                  checked={!!field.value}
                   onCheckedChange={field.onChange}
                   disabled={!clinicCanSendReminders}
                 />

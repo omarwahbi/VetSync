@@ -31,8 +31,8 @@ const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   address: z.string().optional(),
   phone: z.string().optional(),
-  isActive: z.boolean().default(true),
-  canSendReminders: z.boolean().default(false),
+  isActive: z.boolean(),
+  canSendReminders: z.boolean(),
   subscriptionEndDate: z.date().nullable().optional(),
 });
 

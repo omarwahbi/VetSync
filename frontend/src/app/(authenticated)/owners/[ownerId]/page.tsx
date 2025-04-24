@@ -20,7 +20,6 @@ import {
   MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
-import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 import { AxiosError } from "axios";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -60,6 +59,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { OwnerForm } from "@/components/forms/owner-form";
 import { PetForm } from "@/components/forms/pet-form";
+import { formatPhoneNumberForWhatsApp } from "@/lib/phoneUtils";
 
 // Simple Skeleton component for loading states
 const Skeleton = ({ className = "" }: { className?: string }) => (

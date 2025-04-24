@@ -99,7 +99,8 @@ const fetchVisits = async (petId: string): Promise<Visit[]> => {
 const fetchPet = async (petId: string): Promise<Pet> => {
   // Get all owners
   const ownersResponse = await axiosInstance.get("/owners");
-  const owners = ownersResponse.data;
+  // Extract the owners array from the data property in the response
+  const owners = ownersResponse.data.data || [];
 
   // Iterate through owners to find the pet
   for (const owner of owners) {

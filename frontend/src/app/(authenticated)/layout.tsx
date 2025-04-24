@@ -13,16 +13,21 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Use individual selectors to avoid creating a new object on every render
+  // Use individual selectors to avoid unnecessary rerenders
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
 
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [hasCalculated, setHasCalculated] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return; // Don't perform calculations while loading
+    // Skip calculation on initial render to avoid hydration mismatches
+    if (typeof window === "undefined") return;
+
+    // Skip if we've already processed this state
+    if (isLoading || hasCalculated) return;
 
     const clinicIsActive = user?.clinic?.isActive ?? false;
     const subEndDateString = user?.clinic?.subscriptionEndDate;
@@ -35,27 +40,19 @@ export default function DashboardLayout({
       ) {
         const today = new Date();
         const diff = differenceInCalendarDays(endDateObj, today);
-
-        // Only update state if values have changed to prevent unnecessary re-renders
-        if (
-          diff !== daysRemaining ||
-          !endDate ||
-          endDate.getTime() !== endDateObj.getTime()
-        ) {
-          setDaysRemaining(diff);
-          setEndDate(endDateObj);
-        }
-      } else if (daysRemaining !== null || endDate !== null) {
-        // Only update if current values aren't already null
+        setDaysRemaining(diff);
+        setEndDate(endDateObj);
+      } else {
         setDaysRemaining(null);
         setEndDate(null);
       }
-    } else if (daysRemaining !== null || endDate !== null) {
-      // Only update if current values aren't already null
+    } else {
       setDaysRemaining(null);
       setEndDate(null);
     }
-  }, [isLoading, user, daysRemaining, endDate]);
+
+    setHasCalculated(true);
+  }, [isLoading, user, hasCalculated]);
 
   return (
     <ProtectedRoute>

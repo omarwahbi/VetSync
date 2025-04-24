@@ -10,7 +10,11 @@ interface AdminGuardProps {
 }
 
 export function AdminGuard({ children }: AdminGuardProps) {
-  const { user, isAuthenticated, isLoading } = useAuthStore();
+  // Use individual selectors to avoid unnecessary rerenders
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+
   const router = useRouter();
 
   useEffect(() => {

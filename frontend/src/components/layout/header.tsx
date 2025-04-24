@@ -25,7 +25,10 @@ import { ThemeToggleButton } from "@/components/ui/theme-toggle-button";
 import axiosInstance from "@/lib/axios";
 
 export function Header() {
-  const { logout, user } = useAuthStore();
+  // Use individual selectors to avoid unnecessary rerenders
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
   const router = useRouter();
 
   const handleLogout = async () => {
