@@ -14,10 +14,12 @@ export class ClinicsService {
       return await this.prisma.clinic.create({
         data: createDto,
       });
-    } catch (error) {
+    } catch (error: any) {
       // Handle unique constraint violation (if clinic name is unique)
       if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
-        throw new ConflictException(`Clinic with name "${createDto.name}" already exists`);
+        throw new ConflictException(
+          `Clinic with name "${createDto.name}" already exists`,
+        );
       }
       throw new Error(`Failed to create clinic: ${error.message}`);
     }
@@ -41,7 +43,7 @@ export class ClinicsService {
     }
 
     // Calculate pagination if needed
-    const skip = queryDto.page && queryDto.limit 
+    const skip = queryDto.page && queryDto.limit
       ? (queryDto.page - 1) * queryDto.limit
       : undefined;
     
@@ -59,7 +61,11 @@ export class ClinicsService {
         phone: true,
         isActive: true,
         canSendReminders: true,
+        subscriptionStartDate: true,
         subscriptionEndDate: true,
+        reminderMonthlyLimit: true,
+        reminderSentThisCycle: true, 
+        currentCycleStartDate: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -133,10 +139,19 @@ export class ClinicsService {
       // First check if the clinic exists
       await this.findClinicById(clinicId);
       
+      // Prepare data for update
+      const data: any = { ...updateDto };
+      
+      // When subscriptionStartDate is updated, reset cycle fields
+      if (updateDto.subscriptionStartDate) {
+        data.reminderSentThisCycle = 0;
+        data.currentCycleStartDate = new Date(updateDto.subscriptionStartDate);
+      }
+      
       // Then update the clinic with the provided data
       return this.prisma.clinic.update({
         where: { id: clinicId },
-        data: updateDto,
+        data,
       });
     } catch (error) {
       if (error instanceof NotFoundException) {

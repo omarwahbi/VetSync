@@ -49,6 +49,14 @@ export class AuthService {
     
     const user = await this.prisma.user.findUnique({
       where: { email },
+      include: {
+        clinic: {
+          select: { 
+            isActive: true, 
+            subscriptionEndDate: true 
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -63,9 +71,27 @@ export class AuthService {
       return null;
     }
 
-    // Exclude password from returned user object
+    // Check clinic status ONLY if the user is NOT a Platform Admin
+    if (user.role !== UserRole.ADMIN) {
+      const clinic = user.clinic;
+      // Check if clinic is missing, inactive, or subscription expired
+      if (
+        !clinic ||
+        !clinic.isActive ||
+        !clinic.subscriptionEndDate ||
+        clinic.subscriptionEndDate < new Date()
+      ) {
+        // Clinic is invalid - prevent login by returning null
+        this.logger.warn(
+          `Login failed for user ${email} due to inactive/expired/missing clinic.`,
+        );
+        return null; // Returning null signals failed validation to LocalStrategy
+      }
+    }
+
+    // Exclude password and clinic from returned user object
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...result } = user;
+    const { password, clinic, ...result } = user;
     this.logger.debug(`User validated successfully: ${email}`);
     return result;
   }

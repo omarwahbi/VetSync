@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axios";
-import { Building2, Edit, Plus } from "lucide-react";
+import { Building2, Edit, Plus, AlertCircle } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -39,7 +39,11 @@ interface Clinic {
   canSendReminders: boolean;
   address?: string;
   phone?: string;
+  subscriptionStartDate?: string;
   subscriptionEndDate?: string;
+  reminderMonthlyLimit?: number;
+  reminderSentThisCycle?: number;
+  currentCycleStartDate?: string;
   ownerCount?: number;
   petCount?: number;
   createdAt: string;
@@ -52,7 +56,9 @@ interface ClinicUpdateData {
   phone?: string;
   isActive?: boolean;
   canSendReminders?: boolean;
+  subscriptionStartDate?: Date | null;
   subscriptionEndDate?: Date | null;
+  reminderMonthlyLimit?: number;
 }
 
 // Function to fetch all clinics
@@ -94,6 +100,76 @@ const updateClinicFn = async ({
     updateData
   );
   return response.data;
+};
+
+// Helper function to render reminder usage with visual indicators
+const renderReminderUsage = (
+  sent: number | undefined,
+  limit: number | undefined,
+  canSendReminders: boolean
+) => {
+  const sentCount = sent ?? 0;
+
+  // If reminders are disabled system-wide
+  if (!canSendReminders) {
+    return (
+      <div className="flex items-center">
+        <span className="text-muted-foreground">{sentCount}</span>
+        <AlertCircle className="h-4 w-4 ml-1 text-gray-400" />
+      </div>
+    );
+  }
+
+  // If unlimited reminders
+  if (limit === -1) {
+    return (
+      <div className="flex items-center">
+        <span className="font-medium">{sentCount}</span>
+        <span className="text-muted-foreground ml-1">/ ∞</span>
+      </div>
+    );
+  }
+
+  // If reminders are disabled by limit
+  if (limit === 0) {
+    return (
+      <div className="flex items-center">
+        <span className="text-muted-foreground">{sentCount}</span>
+        <AlertCircle className="h-4 w-4 ml-1 text-gray-400" />
+      </div>
+    );
+  }
+
+  // Calculate usage percentage for warnings
+  const usagePercent = limit ? (sentCount / limit) * 100 : 0;
+  let textColorClass = "text-muted-foreground";
+
+  if (usagePercent >= 90) {
+    textColorClass = "text-red-600 font-semibold";
+  } else if (usagePercent >= 75) {
+    textColorClass = "text-amber-600 font-medium";
+  }
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center">
+        <span className={textColorClass}>{sentCount}</span>
+        <span className="text-muted-foreground ml-1">/ {limit}</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+        <div
+          className={`h-1 rounded-full ${
+            usagePercent >= 90
+              ? "bg-red-500"
+              : usagePercent >= 75
+              ? "bg-amber-500"
+              : "bg-green-500"
+          }`}
+          style={{ width: `${Math.min(100, usagePercent)}%` }}
+        ></div>
+      </div>
+    </div>
+  );
 };
 
 export default function ClinicsPage() {
@@ -196,10 +272,13 @@ export default function ClinicsPage() {
                 <TableRow className="hover:bg-muted/50">
                   <TableHead className="font-medium">Name</TableHead>
                   <TableHead className="font-medium">Status</TableHead>
-                  <TableHead className="font-medium">Reminders</TableHead>
+                  <TableHead className="font-medium">Reminder Limit</TableHead>
+                  <TableHead className="font-medium">Sent This Cycle</TableHead>
                   <TableHead className="font-medium">
-                    Subscription End
+                    Current Cycle Start
                   </TableHead>
+                  <TableHead className="font-medium">Sub Start</TableHead>
+                  <TableHead className="font-medium">Sub End</TableHead>
                   <TableHead className="font-medium text-right">
                     Owner Count
                   </TableHead>
@@ -228,16 +307,55 @@ export default function ClinicsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          clinic.canSendReminders
-                            ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                        }
-                      >
-                        {clinic.canSendReminders ? "Enabled" : "Disabled"}
-                      </Badge>
+                      {!clinic.canSendReminders ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-red-100 text-red-800 hover:bg-red-100"
+                        >
+                          Disabled (System)
+                        </Badge>
+                      ) : clinic.reminderMonthlyLimit === -1 ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-blue-100 text-blue-800 hover:bg-blue-100"
+                        >
+                          Unlimited
+                        </Badge>
+                      ) : clinic.reminderMonthlyLimit === 0 ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-gray-100 text-gray-800 hover:bg-gray-100"
+                        >
+                          Disabled (Limit)
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          {clinic.reminderMonthlyLimit} / cycle
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {renderReminderUsage(
+                        clinic.reminderSentThisCycle,
+                        clinic.reminderMonthlyLimit,
+                        clinic.canSendReminders
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {clinic.currentCycleStartDate
+                        ? format(
+                            new Date(clinic.currentCycleStartDate),
+                            "MMM d, yyyy"
+                          )
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {clinic.subscriptionStartDate
+                        ? format(
+                            new Date(clinic.subscriptionStartDate),
+                            "MMM d, yyyy"
+                          )
+                        : "N/A"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {clinic.subscriptionEndDate
@@ -279,7 +397,7 @@ export default function ClinicsPage() {
 
       {/* Edit Clinic Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="text-left">
             <DialogTitle className="text-lg font-semibold">
               Edit Clinic Settings
@@ -298,7 +416,7 @@ export default function ClinicsPage() {
 
       {/* Create Clinic Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="text-left">
             <DialogTitle className="text-lg font-semibold">
               Create New Clinic

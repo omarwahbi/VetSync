@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
 
 export class UpdateClinicSettingsDto {
   @IsString()
@@ -27,5 +27,14 @@ export class UpdateClinicSettingsDto {
 
   @IsDateString()
   @IsOptional()
+  subscriptionStartDate?: string;
+
+  @IsDateString()
+  @IsOptional()
   subscriptionEndDate?: string;
+
+  @IsInt()
+  @Min(-1)
+  @IsOptional()
+  reminderMonthlyLimit?: number;
 } 

@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, SchedulerRegistry } from '@nestjs/schedule';
+import { Cron, SchedulerRegistry, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { Twilio } from 'twilio';
+import { addMonths, isAfter, startOfDay } from 'date-fns';
 
 // Interface for Twilio error type
 interface TwilioError extends Error {
@@ -59,6 +60,56 @@ export class ReminderService {
     return digitsOnly;
   }
 
+  // Reset monthly reminder counts - runs daily at 4 AM
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async resetMonthlyReminderCounts() {
+    this.logger.log('Running daily check for reminder cycle resets...');
+    const now = new Date();
+    const startOfToday = startOfDay(now); // Use start of day for comparison robustness
+
+    const activeClinicsWithLimits = await this.prisma.clinic.findMany({
+      where: {
+        isActive: true,
+        subscriptionEndDate: { gte: now }, // Still subscribed
+        reminderMonthlyLimit: { gt: 0 }, // Has a limit
+        currentCycleStartDate: { not: null }, // Cycle must have been started
+      },
+      select: { id: true, currentCycleStartDate: true },
+    });
+
+    let resetCount = 0;
+    for (const clinic of activeClinicsWithLimits) {
+      // Calculate when the *next* cycle SHOULD start (approx 1 month after current start)
+      // date-fns handles month lengths correctly
+      const nextCycleStartDate = startOfDay(
+        addMonths(clinic.currentCycleStartDate!, 1),
+      );
+
+      // Check if today IS ON or AFTER the day the next cycle should start
+      if (
+        isAfter(startOfToday, nextCycleStartDate) ||
+        startOfToday.getTime() === nextCycleStartDate.getTime()
+      ) {
+        this.logger.log(
+          `Resetting counter for Clinic ${clinic.id}. Cycle started ${clinic.currentCycleStartDate}, next start was ${nextCycleStartDate}`,
+        );
+        try {
+          await this.prisma.clinic.update({
+            where: { id: clinic.id },
+            data: {
+              reminderSentThisCycle: 0,
+              currentCycleStartDate: startOfToday, // Start new cycle today
+            },
+          });
+          resetCount++;
+        } catch (error) {
+           this.logger.error(`Failed to reset counter for clinic ${clinic.id}`, error);
+        }
+      }
+    }
+    this.logger.log(`Reminder cycle reset check complete. Reset counters for ${resetCount} clinics.`);
+  }
+
   // Run once every day at 1 pm
   @Cron('0 13 * * *')
   async handleScheduledReminders() {
@@ -111,7 +162,19 @@ export class ReminderService {
             include: {
               owner: {
                 include: {
-                  clinic: true,
+                  clinic: {
+                    select: {
+                      id: true,
+                      name: true,
+                      phone: true,
+                      isActive: true,
+                      canSendReminders: true,
+                      subscriptionEndDate: true,
+                      reminderMonthlyLimit: true,
+                      reminderSentThisCycle: true,
+                      currentCycleStartDate: true,
+                    }
+                  },
                 },
               },
             },
@@ -136,6 +199,7 @@ export class ReminderService {
       // Process each visit and send reminder
       for (const visit of visitsNeedingReminders) {
         const ownerPhone = visit.pet.owner.phone;
+        const clinic = visit.pet.owner.clinic;
         
         // Basic validation for phone number
         if (!ownerPhone || !ownerPhone.trim()) {
@@ -151,6 +215,33 @@ export class ReminderService {
           );
           continue;
         }
+
+        // Check if clinic has reached their monthly limit
+        if (clinic.reminderMonthlyLimit === 0) {
+          this.logger.warn(
+            `Clinic ${clinic.name} (ID: ${clinic.id}) has reminder limit set to 0. Skipping reminder for visit ${visit.id}.`,
+          );
+          // Mark the reminder as sent to avoid retries
+          await this.prisma.visit.update({
+            where: { id: visit.id },
+            data: { reminderSent: true },
+          });
+          continue;
+        }
+
+        // Check if clinic has a limit and if it's reached
+        if (clinic.reminderMonthlyLimit > 0 && 
+            clinic.reminderSentThisCycle >= clinic.reminderMonthlyLimit) {
+          this.logger.warn(
+            `Clinic ${clinic.name} (ID: ${clinic.id}) has reached their monthly reminder limit (${clinic.reminderSentThisCycle}/${clinic.reminderMonthlyLimit}). Skipping reminder for visit ${visit.id}.`,
+          );
+          // Mark the reminder as sent to avoid retries
+          await this.prisma.visit.update({
+            where: { id: visit.id },
+            data: { reminderSent: true },
+          });
+          continue;
+        }
         
         // Format phone numbers for WhatsApp
         const formattedPhone = this.formatPhoneNumber(ownerPhone);
@@ -161,8 +252,8 @@ export class ReminderService {
         
         // Add fallbacks for potentially missing data
         const petName = visit.pet.name || '[Pet Name Unavailable]';
-        const clinicName = visit.pet.owner.clinic.name || '[Clinic Name Unavailable]';
-        const clinicPhone = visit.pet.owner.clinic.phone || '[Clinic Phone Unavailable]';
+        const clinicName = clinic.name || '[Clinic Name Unavailable]';
+        const clinicPhone = clinic.phone || '[Clinic Phone Unavailable]';
         const visitType = visit.visitType || 'health check';
         
         // Format the date consistently for the message
@@ -194,6 +285,17 @@ export class ReminderService {
             where: { id: visit.id },
             data: { reminderSent: true },
           });
+
+          // If clinic has a limit, increment their counter
+          if (clinic.reminderMonthlyLimit > 0) {
+            await this.prisma.clinic.update({
+              where: { id: clinic.id },
+              data: { reminderSentThisCycle: { increment: 1 } },
+            });
+            this.logger.log(
+              `Incremented reminder counter for clinic ${clinic.name} (ID: ${clinic.id}) to ${clinic.reminderSentThisCycle + 1}/${clinic.reminderMonthlyLimit}.`,
+            );
+          }
           
         } catch (error) {
           const twilioError = error as TwilioError;

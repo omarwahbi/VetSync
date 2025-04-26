@@ -37,7 +37,8 @@ axiosInstance.interceptors.response.use(
           console.log('No refresh token available or token expired');
           useAuthStore.getState().logout();
           
-          if (typeof window !== 'undefined') {
+          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+            console.log("Redirecting to login due to missing token.");
             window.location.href = '/login';
           }
           
@@ -52,22 +53,26 @@ axiosInstance.interceptors.response.use(
         
         // Retry the original request with the new token
         return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        console.error('Error refreshing token:', refreshError);
+      } catch (refreshError: unknown) {
+        console.error('Token refresh failed:', refreshError);
         
-        // Clear auth state and redirect to login
+        // Force local logout: Clear token/user from Zustand state
         useAuthStore.getState().logout();
         
-        // Use more reliable approach for navigation in server components
-        if (typeof window !== 'undefined') {
+        // Force redirect to login page (using window.location is more forceful)
+        // Check if window exists (prevent server-side errors) and not already on login
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          console.log("Redirecting to login due to refresh failure.");
           window.location.href = '/login';
         }
         
+        // Crucially, REJECT the promise to stop the interceptor chain 
+        // and prevent the original request from being retried incorrectly
         return Promise.reject(refreshError);
       }
     }
     
-    // If error is not 401 or we've already tried to refresh, just reject
+    // If error is not 401 or we've already tried to refresh, just reject with original error
     return Promise.reject(error);
   }
 );

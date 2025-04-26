@@ -14,15 +14,19 @@ datasource db {
 }
 
 model Clinic {
-  id                  String    @id @default(cuid())
-  name                String    @unique // Clinic names should be unique
-  address             String? // Optional address
-  phone               String? // Optional phone
-  isActive            Boolean   @default(false) // Subscription status
-  canSendReminders    Boolean   @default(false) // Explicit flag for reminder feature access
-  subscriptionEndDate DateTime? // Subscription end date
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                    String    @id @default(cuid())
+  name                  String    @unique // Clinic names should be unique
+  address               String? // Optional address
+  phone                 String? // Optional phone
+  isActive              Boolean   @default(false) // Subscription status
+  canSendReminders      Boolean   @default(false) // Explicit flag for reminder feature access
+  subscriptionStartDate DateTime? // Optional: Date the current paid term started
+  subscriptionEndDate   DateTime? // Date the current paid term ends
+  reminderMonthlyLimit  Int       @default(0) // Max allowed per cycle WHEN canSendReminders is true (-1=unlimited, 0=effectively disabled by count check)
+  reminderSentThisCycle Int       @default(0) // Counter for the current cycle
+  currentCycleStartDate DateTime? // Timestamp when the current usage cycle began
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   // Relation: A clinic can have many users
   users  User[]

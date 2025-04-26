@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Edit } from "lucide-react";
+import { Building2, Edit, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import axiosInstance from "@/lib/axios";
@@ -23,10 +23,86 @@ interface ClinicProfile {
   address: string;
   phone: string;
   isActive: boolean;
+  canSendReminders?: boolean;
+  reminderMonthlyLimit?: number;
+  reminderSentThisCycle?: number;
+  currentCycleStartDate?: string;
   subscriptionEndDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+// Helper function to render reminder limits
+const renderReminderLimit = (limit?: number, canSendReminders?: boolean) => {
+  if (!canSendReminders) {
+    return <span className="text-red-600">Disabled (System)</span>;
+  }
+
+  if (limit === -1) {
+    return <span className="text-blue-600">Unlimited</span>;
+  }
+
+  if (limit === 0) {
+    return <span className="text-gray-600">Disabled (Limit)</span>;
+  }
+
+  return <span>{limit} per cycle</span>;
+};
+
+// Helper function to render usage status with visual indicators
+const renderReminderUsage = (
+  sent?: number,
+  limit?: number,
+  canSendReminders?: boolean
+) => {
+  const sentCount = sent ?? 0;
+
+  // If reminders are disabled or zero limit
+  if (!canSendReminders || limit === 0) {
+    return (
+      <div className="flex items-center">
+        <span className="text-gray-500">{sentCount}</span>
+        <AlertCircle className="h-4 w-4 ml-2 text-gray-400" />
+      </div>
+    );
+  }
+
+  // For unlimited reminders
+  if (limit === -1) {
+    return <span>{sentCount}</span>;
+  }
+
+  // Calculate usage percentage
+  const usagePercent = limit ? (sentCount / limit) * 100 : 0;
+  let textColorClass = "text-gray-700";
+
+  if (usagePercent >= 90) {
+    textColorClass = "text-red-600 font-medium";
+  } else if (usagePercent >= 75) {
+    textColorClass = "text-amber-600";
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center">
+        <span className={textColorClass}>{sentCount}</span>
+        <span className="text-gray-500 ml-1">/ {limit}</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-1.5">
+        <div
+          className={`h-1.5 rounded-full ${
+            usagePercent >= 90
+              ? "bg-red-500"
+              : usagePercent >= 75
+              ? "bg-amber-500"
+              : "bg-green-500"
+          }`}
+          style={{ width: `${Math.min(100, usagePercent)}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
 
 // Function to fetch clinic profile
 const fetchClinicProfile = async (): Promise<ClinicProfile> => {
@@ -175,6 +251,49 @@ export default function ClinicProfilePage() {
                 <h3 className="text-lg font-medium">Phone Number</h3>
                 <p className="text-gray-700">{clinicProfile.phone}</p>
               </div>
+
+              {/* Reminder Usage Section */}
+              <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                <h3 className="text-lg font-medium mb-4">Reminder Usage</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">
+                      Monthly Reminder Limit:
+                    </p>
+                    <div className="font-medium">
+                      {renderReminderLimit(
+                        clinicProfile.reminderMonthlyLimit,
+                        clinicProfile.canSendReminders
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">
+                      Reminders Sent This Cycle:
+                    </p>
+                    <div>
+                      {renderReminderUsage(
+                        clinicProfile.reminderSentThisCycle,
+                        clinicProfile.reminderMonthlyLimit,
+                        clinicProfile.canSendReminders
+                      )}
+                    </div>
+                  </div>
+                  {clinicProfile.currentCycleStartDate && (
+                    <div className="col-span-1 md:col-span-2">
+                      <p className="text-sm text-gray-500 mb-1">
+                        Current Cycle Started:
+                      </p>
+                      <div className="text-gray-700">
+                        {new Date(
+                          clinicProfile.currentCycleStartDate
+                        ).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {clinicProfile.subscriptionEndDate && (
                 <div className="">
                   <h3 className="text-lg font-medium">Subscription</h3>
