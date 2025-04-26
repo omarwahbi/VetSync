@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "UserRole" ADD VALUE 'CLINIC_ADMIN';

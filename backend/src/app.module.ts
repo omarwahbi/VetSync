@@ -14,6 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ClinicsModule } from './admin/clinics/clinics.module';
 import { UsersModule } from './users/users.module';
 import { UsersModule as AdminUsersModule } from './admin/users/users.module';
+import { ClinicUsersModule } from './clinic-users/clinic-users.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { UsersModule as AdminUsersModule } from './admin/users/users.module';
     ClinicsModule,
     UsersModule,
     AdminUsersModule,
+    ClinicUsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

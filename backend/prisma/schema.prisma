@@ -54,6 +54,7 @@ model User {
 
 enum UserRole {
   ADMIN // Platform Admin (can manage clinics) - Might need separate handling or flag later
+  CLINIC_ADMIN // Clinic Admin (can manage staff within their clinic)
   STAFF // Regular Vet/Staff user
 }
 

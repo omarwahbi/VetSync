@@ -32,6 +32,18 @@ axiosInstance.interceptors.response.use(
         const refreshResponse = await axiosInstance.post('/auth/refresh');
         const newAccessToken = refreshResponse.data.access_token;
         
+        // If no token is returned, handle gracefully without retrying
+        if (!newAccessToken) {
+          console.log('No refresh token available or token expired');
+          useAuthStore.getState().logout();
+          
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          
+          return Promise.reject(error);
+        }
+        
         // Update auth store with new token
         useAuthStore.getState().setAccessToken(newAccessToken);
         

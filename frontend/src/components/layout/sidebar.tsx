@@ -43,11 +43,17 @@ const adminNavItems = [
   { name: "Admin Settings", href: "/admin/settings", icon: Settings },
 ];
 
+const clinicAdminItems = [
+  { name: "Manage Users", href: "/dashboard/manage-users", icon: UserPlus },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
   const { logout, user } = useAuthStore();
   const router = useRouter();
-  const isAdmin = user?.role === "ADMIN";
+  const userRole = user?.role;
+  const isAdmin = userRole === "ADMIN";
+  const isClinicAdmin = userRole === "CLINIC_ADMIN";
 
   const handleLogout = async () => {
     try {
@@ -69,7 +75,51 @@ export function Sidebar() {
       </div>
 
       <nav className="space-y-1 flex-1 p-4">
-        {navItems.map((item) => {
+        {/* Conditionally render Dashboard for non-STAFF users, or always render if needed */}
+        {userRole !== "STAFF" ? (
+          <Link href="/dashboard">
+            <Button
+              variant={
+                pathname === "/dashboard" || pathname?.startsWith("/dashboard/")
+                  ? "secondary"
+                  : "ghost"
+              }
+              size="default"
+              className={cn(
+                "w-full justify-start gap-2 pl-2 mb-1",
+                pathname === "/dashboard" || pathname?.startsWith("/dashboard/")
+                  ? "bg-secondary"
+                  : ""
+              )}
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
+        ) : (
+          <Link href="/dashboard">
+            <Button
+              variant={
+                pathname === "/dashboard" || pathname?.startsWith("/dashboard/")
+                  ? "secondary"
+                  : "ghost"
+              }
+              size="default"
+              className={cn(
+                "w-full justify-start gap-2 pl-2 mb-1",
+                pathname === "/dashboard" || pathname?.startsWith("/dashboard/")
+                  ? "bg-secondary"
+                  : ""
+              )}
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
+        )}
+
+        {/* Common nav items for all users */}
+        {navItems.slice(1).map((item) => {
           const isActive =
             pathname === item.href || pathname?.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -91,7 +141,42 @@ export function Sidebar() {
           );
         })}
 
-        {/* Admin Section - only visible for admin users */}
+        {/* Clinic Admin Section - only visible for CLINIC_ADMIN users */}
+        {isClinicAdmin && (
+          <>
+            <div className="pt-6 mt-4 border-t">
+              <div className="flex items-center gap-2 px-2 py-3 mb-2 text-sm font-medium text-muted-foreground">
+                <UserCog className="h-4 w-4" />
+                Clinic Management
+              </div>
+
+              {clinicAdminItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  pathname?.startsWith(`${item.href}/`);
+                const Icon = item.icon;
+
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      size="default"
+                      className={cn(
+                        "w-full justify-start gap-2 pl-2 mb-1",
+                        isActive ? "bg-secondary" : ""
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.name}
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Admin Section - only visible for ADMIN users */}
         {isAdmin && (
           <>
             <div className="pt-6 mt-4 border-t">

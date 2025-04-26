@@ -85,6 +85,7 @@ const getVisitTypeBadgeColor = (visitType: string) => {
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const userRole = user?.role;
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Query for fetching dashboard stats
@@ -156,69 +157,74 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Visits Due Today Card */}
-        <Card className="bg-white dark:bg-card shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Visits Due Today
-            </CardTitle>
-            <CalendarCheck2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dueTodayCountDisplay}</div>
-            {isErrorStats && (
-              <p className="text-xs text-red-500">Error loading stats</p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Only show stats cards for ADMIN and CLINIC_ADMIN users */}
+      {userRole !== "STAFF" && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Visits Due Today Card */}
+          <Card className="bg-white dark:bg-card shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Visits Due Today
+              </CardTitle>
+              <CalendarCheck2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dueTodayCountDisplay}</div>
+              {isErrorStats && (
+                <p className="text-xs text-red-500">Error loading stats</p>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Owner Count Card */}
-        <Card className="bg-white dark:bg-card shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Owners</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ownerCountDisplay}</div>
-            {isErrorStats && (
-              <p className="text-xs text-red-500">Error loading stats</p>
-            )}
-          </CardContent>
-        </Card>
+          {/* Owner Count Card */}
+          <Card className="bg-white dark:bg-card shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Owners
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{ownerCountDisplay}</div>
+              {isErrorStats && (
+                <p className="text-xs text-red-500">Error loading stats</p>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Pet Count Card */}
-        <Card className="bg-white dark:bg-card shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Pets</CardTitle>
-            <PawPrint className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{petCountDisplay}</div>
-            {isErrorStats && (
-              <p className="text-xs text-red-500">Error loading stats</p>
-            )}
-          </CardContent>
-        </Card>
+          {/* Pet Count Card */}
+          <Card className="bg-white dark:bg-card shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Pets</CardTitle>
+              <PawPrint className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{petCountDisplay}</div>
+              {isErrorStats && (
+                <p className="text-xs text-red-500">Error loading stats</p>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Upcoming Vaccinations Card */}
-        <Card className="bg-white dark:bg-card shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Upcoming Vaccinations
-            </CardTitle>
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {upcomingVaccinationCountDisplay}
-            </div>
-            {isErrorStats && (
-              <p className="text-xs text-red-500">Error loading stats</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          {/* Upcoming Vaccinations Card */}
+          <Card className="bg-white dark:bg-card shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Upcoming Vaccinations
+              </CardTitle>
+              <CalendarClock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {upcomingVaccinationCountDisplay}
+              </div>
+              {isErrorStats && (
+                <p className="text-xs text-red-500">Error loading stats</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card className="bg-white dark:bg-card shadow-sm">
         <CardHeader>
@@ -289,10 +295,12 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <NewClientWizard
-        isOpen={isWizardOpen}
-        onClose={() => setIsWizardOpen(false)}
-      />
+      {isWizardOpen && (
+        <NewClientWizard
+          isOpen={isWizardOpen}
+          onClose={() => setIsWizardOpen(false)}
+        />
+      )}
     </div>
   );
 }

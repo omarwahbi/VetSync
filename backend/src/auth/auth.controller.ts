@@ -62,19 +62,21 @@ export class AuthController {
   async refreshToken(
     @Req() request: ExpressRequest,
     @Res({ passthrough: true }) response: Response
-  ): Promise<{ access_token: string }> {
-    this.logger.log('Refresh token request received');
-    
+  ): Promise<{ access_token: string | null }> {
     // Get cookie name from config
     const cookieName = this.configService.get<string>('REFRESH_TOKEN_COOKIE_NAME') || 'jid';
     
     // Extract refresh token from cookies
     const providedRefreshToken = request.cookies?.[cookieName];
     
+    // If no token is found, return null token without logging an error
+    // This is a common scenario when a user is not logged in
     if (!providedRefreshToken) {
-      this.logger.warn('Refresh token missing in cookies');
-      throw new UnauthorizedException('Refresh token is missing');
+      return { access_token: null };
     }
+    
+    // Only log when we have a token to process
+    this.logger.log('Processing refresh token request');
     
     try {
       // Step 1: Verify JWT validity

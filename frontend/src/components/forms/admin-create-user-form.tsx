@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useForm, ControllerRenderProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Mail, Lock, User, Building2, Search } from "lucide-react";
+import { Mail, Lock, User, Building2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,13 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { DebouncedSelect } from "@/components/debug-tools";
 
 // Define the clinic interface
 interface Clinic {
@@ -50,11 +44,21 @@ interface AdminCreateUserFormProps {
   isLoading: boolean;
 }
 
+// Logging function to add timestamps
+const log = (message: string, data?: unknown) => {
+  console.log(
+    `[${new Date().toISOString()}] AdminCreateUserForm: ${message}`,
+    data || ""
+  );
+};
+
 export function AdminCreateUserForm({
   clinics,
   onSubmit,
   isLoading,
 }: AdminCreateUserFormProps) {
+  log("Component rendering");
+
   // Set up form with default values
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(formSchema),
@@ -67,29 +71,63 @@ export function AdminCreateUserForm({
     },
   });
 
-  // Add state for clinic search
-  const [clinicSearchQuery, setClinicSearchQuery] = useState("");
+  // Add state for clinic selection - use regular useState
+  const [selectedClinicId, setSelectedClinicId] = useState<string>("");
+
+  // Log when component mounts and unmounts
+  useEffect(() => {
+    log("Component mounted");
+    return () => log("Component unmounted");
+  }, []);
 
   // Handle form submission
   const handleSubmit = (values: CreateUserFormValues) => {
+    log("Form submitted", values);
     onSubmit(values);
   };
+
+  // Handle clinic selection change with useCallback for memoization
+  const handleClinicChange = useCallback(
+    (value: string) => {
+      log("handleClinicChange called with", value);
+
+      // Guard against undefined or null values
+      if (value === undefined || value === null) {
+        log("Ignoring undefined/null clinic value");
+        return;
+      }
+
+      setSelectedClinicId(value);
+
+      // Only update the form if the value is different
+      const currentValue = form.getValues("clinicId");
+      if (currentValue !== value) {
+        log("Updating form value clinicId to", value);
+        form.setValue("clinicId", value, {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: true,
+        });
+      }
+    },
+    [form]
+  );
 
   // Ensure clinics is an array before filtering
   const clinicArray = Array.isArray(clinics) ? clinics : [];
 
-  // Filter clinics based on search query
-  const filteredClinics = clinicArray.filter((clinic) => {
-    if (!clinic || typeof clinic !== "object") return false;
-    return (
-      clinic.name?.toLowerCase().includes(clinicSearchQuery.toLowerCase()) ||
-      false
-    );
-  });
+  // Convert clinics to options format for DebouncedSelect
+  const clinicOptions = clinicArray
+    .filter((clinic) => clinic && typeof clinic === "object")
+    .map((clinic) => ({
+      value: clinic.id,
+      label: clinic.name,
+    }));
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Email field */}
         <FormField
           control={form.control}
           name="email"
@@ -120,6 +158,7 @@ export function AdminCreateUserForm({
           )}
         />
 
+        {/* Password field */}
         <FormField
           control={form.control}
           name="password"
@@ -150,6 +189,7 @@ export function AdminCreateUserForm({
           )}
         />
 
+        {/* First name and last name fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
@@ -203,6 +243,7 @@ export function AdminCreateUserForm({
           />
         </div>
 
+        {/* Clinic field - using DebouncedSelect */}
         <FormField
           control={form.control}
           name="clinicId"
@@ -216,41 +257,17 @@ export function AdminCreateUserForm({
                 <Building2 className="h-4 w-4" />
                 <span className="text-sm font-medium">Assign to Clinic</span>
               </FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a clinic" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="w-full">
-                  <div className="flex items-center border-b px-3 py-2">
-                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                    <input
-                      placeholder="Search clinics..."
-                      className="flex h-8 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      value={clinicSearchQuery}
-                      onChange={(e) => setClinicSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="max-h-[200px] overflow-y-auto">
-                    {filteredClinics.length > 0 ? (
-                      filteredClinics.map((clinic) => (
-                        <SelectItem
-                          key={clinic.id}
-                          value={clinic.id}
-                          className="flex py-2"
-                        >
-                          {clinic.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="py-6 text-center text-sm">
-                        No clinics available
-                      </div>
-                    )}
-                  </div>
-                </SelectContent>
-              </Select>
+
+              <DebouncedSelect
+                label=""
+                value={selectedClinicId || field.value}
+                onValueChange={handleClinicChange}
+                options={clinicOptions}
+                disabled={isLoading}
+                placeholder="Select a clinic"
+                debounceMs={100}
+              />
+
               <FormDescription className="text-xs text-muted-foreground">
                 The user will be assigned to this clinic as a staff member
               </FormDescription>

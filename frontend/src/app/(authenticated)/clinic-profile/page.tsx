@@ -6,6 +6,7 @@ import { Building2, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import axiosInstance from "@/lib/axios";
+import { useAuthStore } from "@/store/auth";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,8 @@ const fetchClinicProfile = async (): Promise<ClinicProfile> => {
 export default function ClinicProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const userRole = user?.role;
 
   // Query to fetch clinic profile
   const {
@@ -135,7 +138,8 @@ export default function ClinicProfilePage() {
             <Building2 className="h-6 w-6 text-primary" />
             <CardTitle className="text-2xl">Clinic Profile</CardTitle>
           </div>
-          {!isEditing && (
+          {/* Only show edit button for CLINIC_ADMIN users */}
+          {userRole === "CLINIC_ADMIN" && !isEditing && (
             <Button
               variant="outline"
               size="sm"
@@ -148,7 +152,7 @@ export default function ClinicProfilePage() {
           )}
         </CardHeader>
         <CardContent className="">
-          {isEditing ? (
+          {isEditing && userRole === "CLINIC_ADMIN" ? (
             <ClinicProfileForm
               initialData={clinicProfile}
               onSave={handleSaveProfile}

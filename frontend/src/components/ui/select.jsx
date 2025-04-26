@@ -21,7 +21,7 @@ function SelectGroup({
 function SelectValue({
   ...props
 }) {
-  return <SelectPrimitive.Value data-slot="select-value" {...props} />;
+  return <SelectPrimitive.Value data-slot="select-value" suppressHydrationWarning {...props} />;
 }
 
 function SelectTrigger({
@@ -32,6 +32,7 @@ function SelectTrigger({
 }) {
   return (
     (<SelectPrimitive.Trigger
+      suppressHydrationWarning
       data-slot="select-trigger"
       data-size={size}
       className={cn(
