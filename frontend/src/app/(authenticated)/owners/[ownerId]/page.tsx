@@ -18,9 +18,13 @@ import {
   Trash2,
   MessageSquare,
   MapPin,
+  SlidersHorizontal,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import { formatPhoneNumberForWhatsApp } from "@/lib/phoneUtils";
+import { formatDisplayDate, formatDisplayDateTime } from "@/lib/utils";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +43,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu.jsx";
 import {
   Dialog,
   DialogContent,
@@ -59,12 +63,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { OwnerForm } from "@/components/forms/owner-form";
 import { PetForm } from "@/components/forms/pet-form";
-import { formatPhoneNumberForWhatsApp } from "@/lib/phoneUtils";
 
 // Simple Skeleton component for loading states
 const Skeleton = ({ className = "" }: { className?: string }) => (
   <div className={`bg-muted animate-pulse rounded ${className}`} />
 );
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
 
 interface Owner {
   id: string;
@@ -75,6 +84,9 @@ interface Owner {
   address?: string | null;
   allowAutomatedReminders: boolean;
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: User;
+  updatedBy?: User;
   pets?: Pet[];
 }
 
@@ -85,6 +97,10 @@ interface Pet {
   breed: string | null;
   gender: string | null;
   birthDate: string | null;
+  createdBy?: User;
+  updatedBy?: User;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface OwnerFormValues {
@@ -122,6 +138,17 @@ export default function OwnerDetailsPage() {
   const [isOwnerDialogOpen, setIsOwnerDialogOpen] = useState(false);
   const [isPetDialogOpen, setIsPetDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Column visibility state - simplified
+  const [petColumnsVisibility, setPetColumnsVisibility] = useState({
+    name: true,
+    species: true,
+    breed: true,
+    gender: true,
+    createdBy: false,
+    updatedBy: false,
+    actions: true,
+  });
 
   const {
     data: ownerData,
@@ -200,6 +227,14 @@ export default function OwnerDetailsPage() {
 
   const handleDeleteOwner = () => {
     deleteOwner(ownerId);
+  };
+
+  // Toggle column visibility
+  const toggleColumn = (column: keyof typeof petColumnsVisibility) => {
+    setPetColumnsVisibility((prev) => ({
+      ...prev,
+      [column]: !prev[column],
+    }));
   };
 
   if (isLoading) {
@@ -400,6 +435,17 @@ export default function OwnerDetailsPage() {
                 </Badge>
               )}
             </div>
+
+            {/* Audit Information */}
+            <div className="text-xs text-muted-foreground mt-4">
+              <p>Created: {formatDisplayDateTime(ownerData.createdAt)}</p>
+              {ownerData.updatedAt &&
+                ownerData.updatedAt !== ownerData.createdAt && (
+                  <p>
+                    Last updated: {formatDisplayDateTime(ownerData.updatedAt)}
+                  </p>
+                )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -410,14 +456,98 @@ export default function OwnerDetailsPage() {
             <PawPrint className="h-5 w-5 mr-2 text-muted-foreground" />
             Pets
           </CardTitle>
-          <Button
-            size="sm"
-            className="flex items-center gap-1"
-            onClick={() => setIsPetDialogOpen(true)}
-          >
-            <PlusCircle className="h-4 w-4" />
-            Add New Pet
-          </Button>
+          <div className="flex space-x-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <SlidersHorizontal className="h-4 w-4 mr-2" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("species")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {petColumnsVisibility.species && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Species
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("breed")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {petColumnsVisibility.breed && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Breed
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("gender")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {petColumnsVisibility.gender && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Gender
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("createdBy")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {petColumnsVisibility.createdBy && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Created By
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("updatedBy")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {petColumnsVisibility.updatedBy && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Updated By
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("actions")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {petColumnsVisibility.actions && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Actions
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={() => setIsPetDialogOpen(true)}
+            >
+              <PlusCircle className="h-4 w-4" />
+              Add New Pet
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="">
           {ownerData.pets && ownerData.pets.length > 0 ? (
@@ -428,12 +558,26 @@ export default function OwnerDetailsPage() {
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-muted/50">
                   <TableHead className="font-medium">Name</TableHead>
-                  <TableHead className="font-medium">Species</TableHead>
-                  <TableHead className="font-medium">Breed</TableHead>
-                  <TableHead className="font-medium">Gender</TableHead>
-                  <TableHead className="text-right font-medium">
-                    Actions
-                  </TableHead>
+                  {petColumnsVisibility.species && (
+                    <TableHead className="font-medium">Species</TableHead>
+                  )}
+                  {petColumnsVisibility.breed && (
+                    <TableHead className="font-medium">Breed</TableHead>
+                  )}
+                  {petColumnsVisibility.gender && (
+                    <TableHead className="font-medium">Gender</TableHead>
+                  )}
+                  {petColumnsVisibility.createdBy && (
+                    <TableHead className="font-medium">Created By</TableHead>
+                  )}
+                  {petColumnsVisibility.updatedBy && (
+                    <TableHead className="font-medium">Updated By</TableHead>
+                  )}
+                  {petColumnsVisibility.actions && (
+                    <TableHead className="text-right font-medium">
+                      Actions
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y">
@@ -447,67 +591,93 @@ export default function OwnerDetailsPage() {
                         {pet.name}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {pet.species}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {pet.breed || "-"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {pet.gender
-                        ? pet.gender.charAt(0).toUpperCase() +
-                          pet.gender.slice(1)
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 p-0"
-                          >
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem
-                            asChild
-                            className="cursor-pointer"
-                            inset={false}
-                          >
-                            <Link
-                              href={`/pets/${pet.id}`}
-                              className="flex items-center"
+                    {petColumnsVisibility.species && (
+                      <TableCell className="text-muted-foreground">
+                        {pet.species}
+                      </TableCell>
+                    )}
+                    {petColumnsVisibility.breed && (
+                      <TableCell className="text-muted-foreground">
+                        {pet.breed || "-"}
+                      </TableCell>
+                    )}
+                    {petColumnsVisibility.gender && (
+                      <TableCell className="text-muted-foreground">
+                        {pet.gender
+                          ? pet.gender.charAt(0).toUpperCase() +
+                            pet.gender.slice(1)
+                          : "-"}
+                      </TableCell>
+                    )}
+                    {petColumnsVisibility.createdBy && (
+                      <TableCell className="text-muted-foreground">
+                        {pet.createdBy
+                          ? `${pet.createdBy.firstName || ""} ${
+                              pet.createdBy.lastName || ""
+                            }`.trim() || "Unknown"
+                          : "System"}
+                      </TableCell>
+                    )}
+                    {petColumnsVisibility.updatedBy && (
+                      <TableCell className="text-muted-foreground">
+                        {pet.updatedBy
+                          ? `${pet.updatedBy.firstName || ""} ${
+                              pet.updatedBy.lastName || ""
+                            }`.trim() || "Unknown"
+                          : "System"}
+                      </TableCell>
+                    )}
+                    {petColumnsVisibility.actions && (
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 p-0"
                             >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="cursor-pointer"
-                            inset={false}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            asChild
-                            className="cursor-pointer"
-                            inset={false}
-                          >
-                            <Link
-                              href={`/pets/${pet.id}/visits`}
-                              className="flex items-center"
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36">
+                            <DropdownMenuItem
+                              asChild
+                              className="cursor-pointer"
+                              inset={false}
                             >
-                              <PawPrint className="mr-2 h-4 w-4" />
-                              Visits
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                              <Link
+                                href={`/pets/${pet.id}`}
+                                className="flex items-center"
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              inset={false}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              asChild
+                              className="cursor-pointer"
+                              inset={false}
+                            >
+                              <Link
+                                href={`/pets/${pet.id}/visits`}
+                                className="flex items-center"
+                              >
+                                <PawPrint className="mr-2 h-4 w-4" />
+                                Visits
+                              </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -532,7 +702,10 @@ export default function OwnerDetailsPage() {
 
       {/* Edit Owner Dialog */}
       <Dialog open={isOwnerDialogOpen} onOpenChange={setIsOwnerDialogOpen}>
-        <DialogContent>
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Edit Owner</DialogTitle>
           </DialogHeader>
@@ -557,7 +730,10 @@ export default function OwnerDetailsPage() {
 
       {/* Add Pet Dialog */}
       <Dialog open={isPetDialogOpen} onOpenChange={setIsPetDialogOpen}>
-        <DialogContent>
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Add New Pet</DialogTitle>
           </DialogHeader>

@@ -15,6 +15,7 @@ import {
   Shield,
   UserCog,
   UserPlus,
+  CalendarCheck2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ const adminNavItems = [
 ];
 
 const clinicAdminItems = [
-  { name: "Manage Users", href: "/dashboard/manage-users", icon: UserPlus },
+  { name: "Manage Users", href: "/manage-users", icon: UserPlus },
 ];
 
 export function Sidebar() {
@@ -117,6 +118,21 @@ export function Sidebar() {
             </Button>
           </Link>
         )}
+
+        {/* Due Visits link - visible to all users */}
+        <Link href="/due-visits">
+          <Button
+            variant={pathname === "/due-visits" ? "secondary" : "ghost"}
+            size="default"
+            className={cn(
+              "w-full justify-start gap-2 pl-2 mb-1",
+              pathname === "/due-visits" ? "bg-secondary" : ""
+            )}
+          >
+            <CalendarCheck2 className="h-4 w-4" />
+            Visits Due Today
+          </Button>
+        </Link>
 
         {/* Common nav items for all users */}
         {navItems.slice(1).map((item) => {

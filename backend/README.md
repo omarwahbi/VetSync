@@ -96,3 +96,24 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+## Rate Limiting
+
+This application implements server-side rate limiting to protect against abuse and brute-force attacks. Rate limiting is configured using the `@nestjs/throttler` package.
+
+### Configuration
+
+Rate limiting can be configured through environment variables:
+
+- `THROTTLE_TTL`: Time window in milliseconds (default: 60000ms / 60 seconds)
+- `THROTTLE_LIMIT`: Number of requests allowed per IP in that time window (default: 100)
+
+### Security Features
+
+Several critical endpoints have stricter rate limits:
+
+- Login: 5 attempts per minute
+- Registration: 3 attempts per 5 minutes
+- Change Password: 5 attempts per 5 minutes
+
+For detailed setup instructions, see `rate-limiting-instructions.md`.

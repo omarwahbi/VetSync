@@ -4,11 +4,10 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import * as cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
-  app.use(cookieParser());
   
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3001',
@@ -18,6 +17,9 @@ async function bootstrap() {
     exposedHeaders: ['Content-Length', 'Date'],
     maxAge: 86400, // 24 hours in seconds
   });
+  
+  app.use(helmet());
+  app.use(cookieParser());
   
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   

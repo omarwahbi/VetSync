@@ -3,9 +3,11 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClinicCreateUserDto } from './dto/clinic-create-user.dto';
+import { ClinicUpdateUserDto } from './dto/clinic-update-user.dto';
 import { User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -24,6 +26,7 @@ export class ClinicUsersService {
         role: true,
         isActive: true,
       },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -62,6 +65,69 @@ export class ClinicUsersService {
     });
 
     return newUser;
+  }
+
+  async updateUserInClinic(callerUser: User, userIdToUpdate: string, updateDto: ClinicUpdateUserDto) {
+    // Fetch user to update
+    const userToUpdate = await this.prisma.user.findUnique({
+      where: { id: userIdToUpdate },
+    });
+
+    if (!userToUpdate) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Authorization check: Verify the user belongs to the same clinic
+    if (userToUpdate.clinicId !== callerUser.clinicId) {
+      throw new ForbiddenException('You cannot update users from another clinic');
+    }
+
+    // Prevent self-update through this endpoint
+    if (userToUpdate.id === callerUser.id) {
+      throw new ForbiddenException('You cannot use this endpoint to update your own account');
+    }
+
+    // Role promotion check
+    if (updateDto.role === UserRole.CLINIC_ADMIN) {
+      if (userToUpdate.role !== UserRole.STAFF) {
+        throw new BadRequestException('Can only promote STAFF users to CLINIC_ADMIN role');
+      }
+    }
+
+    // Prepare data to update
+    const dataToUpdate: Record<string, any> = {};
+    
+    if (updateDto.firstName !== undefined) {
+      dataToUpdate.firstName = updateDto.firstName;
+    }
+    
+    if (updateDto.lastName !== undefined) {
+      dataToUpdate.lastName = updateDto.lastName;
+    }
+    
+    if (updateDto.isActive !== undefined) {
+      dataToUpdate.isActive = updateDto.isActive;
+    }
+    
+    if (updateDto.role !== undefined) {
+      dataToUpdate.role = updateDto.role;
+    }
+
+    // Update the user
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userIdToUpdate },
+      data: dataToUpdate,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    return updatedUser;
   }
 
   async deleteUserInClinic(callerUser: User, userIdToDelete: string) {

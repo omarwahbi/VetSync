@@ -7,6 +7,8 @@ import {
   IsNumber,
   Min,
   Max,
+  IsInt,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -37,4 +39,34 @@ export class CreateVisitDto {
   @IsBoolean()
   @IsOptional()
   isReminderEnabled?: boolean;
+
+  @IsNumber({}, { message: 'Temperature must be a number' })
+  @IsOptional()
+  @Min(0)
+  @Max(50)
+  @Type(() => Number)
+  temperature?: number;
+
+  @IsNumber({}, { message: 'Weight must be a number' })
+  @IsOptional()
+  @Min(0)
+  @Type(() => Number)
+  weight?: number;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['kg', 'lb'])
+  weightUnit?: string;
+
+  @IsInt({ message: 'Heart rate must be an integer' })
+  @IsOptional()
+  @Min(0)
+  @Type(() => Number)
+  heartRate?: number;
+
+  @IsInt({ message: 'Respiratory rate must be an integer' })
+  @IsOptional()
+  @Min(0)
+  @Type(() => Number)
+  respiratoryRate?: number;
 }

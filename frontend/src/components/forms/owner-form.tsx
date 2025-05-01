@@ -151,10 +151,10 @@ export function OwnerForm({
                   type="email"
                   placeholder="john.doe@example.com"
                   {...field}
-                  value={field.value?.toString() || ""}
+                  value={field.value || ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     const value = e.target.value;
-                    field.onChange(value === "" ? undefined : value);
+                    field.onChange(value);
                   }}
                 />
               </FormControl>

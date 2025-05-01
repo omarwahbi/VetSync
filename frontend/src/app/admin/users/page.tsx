@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -186,24 +187,112 @@ const deleteUserFn = async (userId: string) => {
 };
 
 export default function AdminUsersPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
+
+  // Get initial state from URL parameters or use defaults
+  const initialPage = parseInt(searchParams.get("page") || "1", 10);
+  const initialSearch = searchParams.get("search") || "";
+  const initialRoleFilter = searchParams.get("role") || "ALL";
+  const initialClinicFilter = searchParams.get("clinicId") || "ALL";
+  const initialStatusFilter = searchParams.get("status") || "ALL";
+
+  // State using URL values as initial values
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [page, setPage] = useState(initialPage);
+  const [roleFilter, setRoleFilter] = useState(initialRoleFilter);
+  const [clinicFilter, setClinicFilter] = useState(initialClinicFilter);
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
-  const [roleFilter, setRoleFilter] = useState("ALL");
-  const [clinicFilter, setClinicFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
 
   // Use debounced search term to prevent frequent API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  // Reset to first page when filters change
-  useEffect(() => {
+  // Function to create a query string from parameters
+  const createQueryString = useCallback(
+    (paramsToUpdate: Record<string, string | number | undefined>) => {
+      const currentParams = new URLSearchParams(
+        Array.from(searchParams.entries())
+      );
+
+      // Update or delete parameters
+      Object.entries(paramsToUpdate).forEach(([key, value]) => {
+        if (
+          value === undefined ||
+          value === null ||
+          String(value).length === 0 ||
+          (typeof value === "string" && value === "ALL")
+        ) {
+          currentParams.delete(key);
+        } else {
+          currentParams.set(key, String(value));
+        }
+      });
+
+      // Always reset page to 1 when filters (not page itself) change
+      if (Object.keys(paramsToUpdate).some((k) => k !== "page")) {
+        currentParams.set("page", "1");
+      }
+
+      return currentParams.toString();
+    },
+    [searchParams]
+  );
+
+  // Function to clear all filters
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setRoleFilter("ALL");
+    setClinicFilter("ALL");
+    setStatusFilter("ALL");
     setPage(1);
-  }, [debouncedSearchTerm, roleFilter, clinicFilter, statusFilter]);
+    router.push(pathname, { scroll: false });
+  };
+
+  // Update URL when state changes
+  useEffect(() => {
+    const paramsToUpdate = {
+      page: page === 1 ? undefined : page,
+      search: debouncedSearchTerm || undefined,
+      role: roleFilter === "ALL" ? undefined : roleFilter,
+      clinicId: clinicFilter === "ALL" ? undefined : clinicFilter,
+      status: statusFilter === "ALL" ? undefined : statusFilter,
+    };
+
+    const queryString = createQueryString(paramsToUpdate);
+    router.push(`${pathname}${queryString ? `?${queryString}` : ""}`, {
+      scroll: false,
+    });
+  }, [
+    page,
+    debouncedSearchTerm,
+    roleFilter,
+    clinicFilter,
+    statusFilter,
+    pathname,
+    router,
+    createQueryString,
+  ]);
+
+  // Update local state if URL changes externally (like browser back button)
+  useEffect(() => {
+    const newPage = parseInt(searchParams.get("page") || "1", 10);
+    const newSearch = searchParams.get("search") || "";
+    const newRole = searchParams.get("role") || "ALL";
+    const newClinic = searchParams.get("clinicId") || "ALL";
+    const newStatus = searchParams.get("status") || "ALL";
+
+    if (newPage !== page) setPage(newPage);
+    if (newSearch !== searchTerm) setSearchTerm(newSearch);
+    if (newRole !== roleFilter) setRoleFilter(newRole);
+    if (newClinic !== clinicFilter) setClinicFilter(newClinic);
+    if (newStatus !== statusFilter) setStatusFilter(newStatus);
+  }, [searchParams, page, searchTerm, roleFilter, clinicFilter, statusFilter]);
 
   // Query for fetching users
   const {
@@ -346,15 +435,6 @@ export default function AdminUsersPage() {
     if (deletingUser) {
       deleteUser(deletingUser.id);
     }
-  };
-
-  // Clear all filters
-  const handleClearFilters = () => {
-    setSearchTerm("");
-    setRoleFilter("ALL");
-    setClinicFilter("ALL");
-    setStatusFilter("ALL");
-    setPage(1);
   };
 
   // Format user name
@@ -633,7 +713,26 @@ export default function AdminUsersPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(page - 1)}
+                  onClick={() => {
+                    const newPage = Math.max(1, page - 1);
+                    setPage(newPage);
+
+                    // Directly update URL to trigger the API call
+                    const paramsToUpdate = {
+                      page: newPage === 1 ? undefined : newPage,
+                      search: debouncedSearchTerm || undefined,
+                      role: roleFilter === "ALL" ? undefined : roleFilter,
+                      clinicId:
+                        clinicFilter === "ALL" ? undefined : clinicFilter,
+                      status: statusFilter === "ALL" ? undefined : statusFilter,
+                    };
+
+                    const queryString = createQueryString(paramsToUpdate);
+                    router.push(
+                      `${pathname}${queryString ? `?${queryString}` : ""}`,
+                      { scroll: false }
+                    );
+                  }}
                   disabled={page === 1}
                 >
                   Previous
@@ -644,7 +743,26 @@ export default function AdminUsersPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(page + 1)}
+                  onClick={() => {
+                    const newPage = Math.min(meta.totalPages, page + 1);
+                    setPage(newPage);
+
+                    // Directly update URL to trigger the API call
+                    const paramsToUpdate = {
+                      page: newPage === 1 ? undefined : newPage,
+                      search: debouncedSearchTerm || undefined,
+                      role: roleFilter === "ALL" ? undefined : roleFilter,
+                      clinicId:
+                        clinicFilter === "ALL" ? undefined : clinicFilter,
+                      status: statusFilter === "ALL" ? undefined : statusFilter,
+                    };
+
+                    const queryString = createQueryString(paramsToUpdate);
+                    router.push(
+                      `${pathname}${queryString ? `?${queryString}` : ""}`,
+                      { scroll: false }
+                    );
+                  }}
                   disabled={page === meta.totalPages}
                 >
                   Next

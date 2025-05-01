@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -30,6 +31,7 @@ import {
   AdminCreateClinicForm,
   CreateClinicFormValues,
 } from "@/components/forms/admin-create-clinic-form";
+import { useDebounce } from "@/hooks/use-debounce";
 
 // Interface for clinic data
 interface Clinic {
@@ -61,24 +63,51 @@ interface ClinicUpdateData {
   reminderMonthlyLimit?: number;
 }
 
-// Function to fetch all clinics
-const fetchAllClinics = async (): Promise<Clinic[]> => {
-  const response = await axiosInstance.get("/admin/clinics");
-  // Log the raw response for debugging
-  console.log("Clinics page - Raw clinic response:", response.data);
+// Function to fetch all clinics with filters
+const fetchClinics = async ({
+  page = 1,
+  search = "",
+  isActive,
+}: {
+  page?: number;
+  search?: string;
+  isActive?: boolean;
+}): Promise<{
+  data: Clinic[];
+  meta: {
+    totalItems: number;
+    itemCount: number;
+    itemsPerPage: number;
+    totalPages: number;
+    currentPage: number;
+  };
+}> => {
+  const params: Record<string, string | number | boolean> = {
+    page,
+    search: search || "",
+  };
 
-  // Handle both response formats - the new one with data & meta, or the old direct array
-  const clinicsData = response.data.data || response.data;
+  if (isActive !== undefined) params.isActive = isActive;
 
-  // Log the extracted clinics data
-  console.log("Clinics page - Extracted clinics data:", clinicsData);
-
-  const clinicsList = Array.isArray(clinicsData) ? clinicsData : [];
-
-  // Log the final list
-  console.log("Clinics page - Final clinics list:", clinicsList);
-
-  return clinicsList;
+  const response = await axiosInstance.get("/admin/clinics", { params });
+  
+  // Handle both new and old API response formats
+  if (response.data.data && response.data.meta) {
+    return response.data;
+  }
+  
+  // If the old format (just an array), convert to expected format
+  const clinics = Array.isArray(response.data) ? response.data : [];
+  return {
+    data: clinics,
+    meta: {
+      totalItems: clinics.length,
+      itemCount: clinics.length,
+      itemsPerPage: clinics.length,
+      totalPages: 1,
+      currentPage: 1
+    }
+  };
 };
 
 // Function to create a new clinic
@@ -172,25 +201,130 @@ const renderReminderUsage = (
   );
 };
 
-export default function ClinicsPage() {
-  // State for dialogs
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingClinic, setEditingClinic] = useState<Clinic | null>(null);
-
-  // Query client for cache invalidation
+export default function AdminClinicsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  // Get initial state from URL parameters or use defaults
+  const initialPage = parseInt(searchParams.get("page") || "1", 10);
+  const initialSearch = searchParams.get("search") || "";
+  const initialStatusFilter = searchParams.get("status") || "ALL";
+
+  // State using URL values as initial values
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [page, setPage] = useState(initialPage);
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [isCreateClinicOpen, setIsCreateClinicOpen] = useState(false);
+  const [isEditClinicOpen, setIsEditClinicOpen] = useState(false);
+  const [editingClinic, setEditingClinic] = useState<Clinic | null>(null);
+  const [deletingClinic, setDeletingClinic] = useState<Clinic | null>(null);
+
+  // Use debounced search term to prevent frequent API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Function to create a query string from parameters
+  const createQueryString = useCallback(
+    (paramsToUpdate: Record<string, string | number | undefined>) => {
+      const currentParams = new URLSearchParams(
+        Array.from(searchParams.entries())
+      );
+
+      // Update or delete parameters
+      Object.entries(paramsToUpdate).forEach(([key, value]) => {
+        if (
+          value === undefined ||
+          value === null ||
+          String(value).length === 0 ||
+          (typeof value === "string" && value === "ALL")
+        ) {
+          currentParams.delete(key);
+        } else {
+          currentParams.set(key, String(value));
+        }
+      });
+
+      // Always reset page to 1 when filters (not page itself) change
+      if (Object.keys(paramsToUpdate).some((k) => k !== "page")) {
+        currentParams.set("page", "1");
+      }
+
+      return currentParams.toString();
+    },
+    [searchParams]
+  );
+
+  // Function to clear all filters
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("ALL");
+    setPage(1);
+    router.push(pathname, { scroll: false });
+  };
+
+  // Update URL when state changes
+  useEffect(() => {
+    const paramsToUpdate = {
+      page: page === 1 ? undefined : page,
+      search: debouncedSearchTerm || undefined,
+      status: statusFilter === "ALL" ? undefined : statusFilter,
+    };
+
+    const queryString = createQueryString(paramsToUpdate);
+    router.push(`${pathname}${queryString ? `?${queryString}` : ""}`, {
+      scroll: false,
+    });
+  }, [
+    page,
+    debouncedSearchTerm,
+    statusFilter,
+    pathname,
+    router,
+    createQueryString,
+  ]);
+
+  // Update local state if URL changes externally (like browser back button)
+  useEffect(() => {
+    const newPage = parseInt(searchParams.get("page") || "1", 10);
+    const newSearch = searchParams.get("search") || "";
+    const newStatus = searchParams.get("status") || "ALL";
+
+    if (newPage !== page) setPage(newPage);
+    if (newSearch !== searchTerm) setSearchTerm(newSearch);
+    if (newStatus !== statusFilter) setStatusFilter(newStatus);
+  }, [searchParams, page, searchTerm, statusFilter]);
 
   // Query for fetching clinics
   const {
-    data: clinics = [],
-    isLoading,
-    error,
-    isError,
+    data: clinicsData,
+    isLoading: isLoadingClinics,
+    isError: isClinicsError,
+    error: clinicsError,
+    refetch: refetchClinics,
   } = useQuery({
-    queryKey: ["adminClinics"],
-    queryFn: fetchAllClinics,
+    queryKey: ["adminClinics", page, debouncedSearchTerm, statusFilter],
+    queryFn: () =>
+      fetchClinics({
+        page,
+        search: debouncedSearchTerm,
+        isActive:
+          statusFilter === "ACTIVE"
+            ? true
+            : statusFilter === "INACTIVE"
+            ? false
+            : undefined,
+      }),
   });
+
+  const clinics = clinicsData?.data || [];
+  const meta = clinicsData?.meta || {
+    totalItems: 0,
+    itemCount: 0,
+    itemsPerPage: 0,
+    totalPages: 1,
+    currentPage: 1,
+  };
 
   // Mutation for creating clinic
   const { mutate: createClinic, isPending: isCreatingClinic } = useMutation({
@@ -198,7 +332,7 @@ export default function ClinicsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminClinics"] });
       toast.success("Clinic created successfully");
-      setIsCreateDialogOpen(false);
+      setIsCreateClinicOpen(false);
     },
     onError: (error) => {
       toast.error((error as Error).message || "Failed to create clinic");
@@ -211,7 +345,7 @@ export default function ClinicsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminClinics"] });
       toast.success("Clinic settings have been updated successfully.");
-      setIsEditDialogOpen(false);
+      setIsEditClinicOpen(false);
     },
     onError: (error) => {
       toast.error((error as Error).message || "Something went wrong");
@@ -236,7 +370,7 @@ export default function ClinicsPage() {
   // Handle edit button click
   const handleEditClick = (clinic: Clinic) => {
     setEditingClinic(clinic);
-    setIsEditDialogOpen(true);
+    setIsEditClinicOpen(true);
   };
 
   return (
@@ -247,20 +381,20 @@ export default function ClinicsPage() {
             <Building2 className="h-5 w-5 text-primary" />
             Manage Clinics
           </CardTitle>
-          <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+          <Button size="sm" onClick={() => setIsCreateClinicOpen(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add New Clinic
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? (
+          {isLoadingClinics ? (
             <div className="flex justify-center py-8">
               <LoadingSpinner size="md" text="Loading clinics..." />
             </div>
-          ) : isError ? (
+          ) : isClinicsError ? (
             <div className="py-4 text-center">
               <p className="text-red-500">
-                Error loading data: {(error as Error).message}
+                Error loading data: {(clinicsError as Error).message}
               </p>
             </div>
           ) : clinics.length > 0 ? (
@@ -291,7 +425,7 @@ export default function ClinicsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y">
-                {clinics.map((clinic) => (
+                {clinics.map((clinic: Clinic) => (
                   <TableRow key={clinic.id} className="hover:bg-muted/50">
                     <TableCell className="font-medium">{clinic.name}</TableCell>
                     <TableCell>
@@ -385,6 +519,64 @@ export default function ClinicsPage() {
                 ))}
               </TableBody>
             </Table>
+            
+            {/* Add pagination controls */}
+            {meta && meta.totalPages > 1 && (
+              <div className="px-6 py-4 border-t">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">
+                    Showing page {meta.currentPage} of {meta.totalPages} ({meta.totalItems} total clinics)
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newPage = Math.max(1, page - 1);
+                        setPage(newPage);
+                        
+                        // Directly update URL to trigger the API call
+                        const paramsToUpdate = {
+                          page: newPage === 1 ? undefined : newPage,
+                          search: debouncedSearchTerm || undefined,
+                          status: statusFilter === 'ALL' ? undefined : statusFilter,
+                        };
+                        
+                        const queryString = createQueryString(paramsToUpdate);
+                        router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
+                      }}
+                      disabled={page <= 1}
+                    >
+                      Previous
+                    </Button>
+                    <div className="text-sm">
+                      Page {page} of {meta.totalPages}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newPage = Math.min(meta.totalPages, page + 1);
+                        setPage(newPage);
+                        
+                        // Directly update URL to trigger the API call
+                        const paramsToUpdate = {
+                          page: newPage === 1 ? undefined : newPage,
+                          search: debouncedSearchTerm || undefined,
+                          status: statusFilter === 'ALL' ? undefined : statusFilter,
+                        };
+                        
+                        const queryString = createQueryString(paramsToUpdate);
+                        router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
+                      }}
+                      disabled={page >= meta.totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           ) : (
             <div className="py-8 text-center">
               <p className="text-muted-foreground">
@@ -396,7 +588,7 @@ export default function ClinicsPage() {
       </Card>
 
       {/* Edit Clinic Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditClinicOpen} onOpenChange={setIsEditClinicOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="text-left">
             <DialogTitle className="text-lg font-semibold">
@@ -407,7 +599,7 @@ export default function ClinicsPage() {
             <AdminClinicSettingsForm
               initialData={editingClinic}
               onSubmit={handleUpdateClinic}
-              onClose={() => setIsEditDialogOpen(false)}
+              onClose={() => setIsEditClinicOpen(false)}
               isLoading={isUpdatingClinic}
             />
           )}
@@ -415,7 +607,7 @@ export default function ClinicsPage() {
       </Dialog>
 
       {/* Create Clinic Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Dialog open={isCreateClinicOpen} onOpenChange={setIsCreateClinicOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="text-left">
             <DialogTitle className="text-lg font-semibold">
@@ -424,7 +616,7 @@ export default function ClinicsPage() {
           </DialogHeader>
           <AdminCreateClinicForm
             onSubmit={handleCreateClinic}
-            onClose={() => setIsCreateDialogOpen(false)}
+            onClose={() => setIsCreateClinicOpen(false)}
             isLoading={isCreatingClinic}
           />
         </DialogContent>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "@/lib/axios";
-import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -23,15 +23,9 @@ import {
   Filter,
   MoreHorizontal,
   RefreshCcw,
+  SlidersHorizontal,
+  Check,
 } from "lucide-react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
@@ -72,9 +66,12 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { AxiosError } from "axios";
 import { Plus } from "lucide-react";
+import { formatDisplayDate, formatDisplayDateTime } from "@/lib/utils";
+import { SimplePagination } from "@/components/owners/SimplePagination";
 
 // Constants
-const ITEMS_PER_PAGE = 20;
+const PAGE_SIZES = [10, 20, 50, 100];
+const ITEMS_PER_PAGE = PAGE_SIZES[1]; // Default to 20
 const VISIT_TYPES = [
   { value: "all", label: "All Types" },
   { value: "checkup", label: "Checkup" },
@@ -83,6 +80,13 @@ const VISIT_TYPES = [
   { value: "emergency", label: "Emergency" },
   { value: "dental", label: "Dental" },
 ];
+
+// Interface for user who created/updated the visit
+interface User {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+}
 
 // Interface for visit data
 interface Visit {
@@ -93,6 +97,16 @@ interface Visit {
   nextReminderDate: string | null;
   isReminderEnabled: boolean;
   price: number | null;
+  weight?: number | null;
+  weightUnit?: "kg" | "lb";
+  temperature?: number | null;
+  heartRate?: number | null;
+  respiratoryRate?: number | null;
+  bloodPressure?: string | null;
+  spo2?: number | null;
+  crt?: string | null;
+  mmColor?: string | null;
+  painScore?: number | null;
   pet: {
     id: string;
     name: string;
@@ -103,6 +117,10 @@ interface Visit {
       allowAutomatedReminders: boolean;
     };
   };
+  createdBy?: User;
+  updatedBy?: User;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Interface for API response
@@ -119,18 +137,20 @@ interface VisitsResponse {
 // Function to fetch visits with pagination and filters
 const fetchVisits = async ({
   pageParam = 1,
+  limitParam = ITEMS_PER_PAGE,
   searchTerm,
   visitType,
   dateRange,
 }: {
   pageParam?: number;
+  limitParam?: number;
   searchTerm?: string;
   visitType?: string;
   dateRange?: DateRange;
 }) => {
   const params: Record<string, string | number | undefined> = {
     page: pageParam,
-    limit: ITEMS_PER_PAGE,
+    limit: limitParam,
     search: searchTerm || undefined,
     visitType: visitType === "all" ? undefined : visitType || undefined,
     startDate: dateRange?.from
@@ -170,59 +190,6 @@ const getVisitTypeBadgeColor = (visitType: string) => {
   }
 };
 
-// Function to determine reminder status badge
-const getReminderStatusBadge = (
-  isEnabled: boolean,
-  nextDate: string | null
-) => {
-  if (!isEnabled) {
-    return (
-      <Badge variant="outline" className="bg-gray-100 text-gray-800">
-        Disabled
-      </Badge>
-    );
-  }
-
-  if (!nextDate) {
-    return (
-      <Badge variant="outline" className="bg-gray-100 text-gray-800">
-        Not Set
-      </Badge>
-    );
-  }
-
-  const reminderDate = new Date(nextDate);
-  const today = new Date();
-  const timeDiff = reminderDate.getTime() - today.getTime();
-  const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-  if (daysDiff < 0) {
-    return (
-      <Badge variant="outline" className="bg-red-100 text-red-800">
-        Overdue
-      </Badge>
-    );
-  } else if (daysDiff === 0) {
-    return (
-      <Badge variant="outline" className="bg-amber-100 text-amber-800">
-        Today
-      </Badge>
-    );
-  } else if (daysDiff <= 7) {
-    return (
-      <Badge variant="outline" className="bg-blue-100 text-blue-800">
-        Soon
-      </Badge>
-    );
-  } else {
-    return (
-      <Badge variant="outline" className="bg-green-100 text-green-800">
-        Scheduled
-      </Badge>
-    );
-  }
-};
-
 // Simple Skeleton component for loading states
 const Skeleton = ({ className = "" }: { className?: string }) => (
   <div className={`bg-muted animate-pulse rounded ${className}`} />
@@ -244,46 +211,177 @@ const formatCurrency = (value: number | string | null | undefined) => {
 };
 
 export default function VisitsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+
+  // Get initial state from URL parameters or use defaults
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
+  const initialSearch = searchParams.get("search") || "";
+  const initialStatusFilter = searchParams.get("status") || "ALL";
+  const initialVisitTypeFilter = searchParams.get("visitType") || "all";
+  const initialLimit = parseInt(
+    searchParams.get("limit") || String(ITEMS_PER_PAGE),
+    10
+  );
+
+  // Get date range from URL - use ISO strings for dates
+  const initialStartDate = searchParams.get("startDate")
+    ? new Date(searchParams.get("startDate") || "")
+    : undefined;
+  const initialEndDate = searchParams.get("endDate")
+    ? new Date(searchParams.get("endDate") || "")
+    : undefined;
+
   // Add state for dialogs and mutations
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
   const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null);
-  const queryClient = useQueryClient();
 
-  // State for pagination and filters
-  const [page, setPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [visitTypeFilter, setVisitTypeFilter] = useState("all");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  // State for pagination and filters (derived from URL)
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [visitTypeFilter, setVisitTypeFilter] = useState(
+    initialVisitTypeFilter
+  );
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: initialStartDate,
+    to: initialEndDate,
+  });
+  const [page, setPage] = useState(currentPage);
+  const [limit, setLimit] = useState(initialLimit);
 
   // Debounce search term to prevent too many requests
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+  // Function to clear all filters
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("ALL");
+    setVisitTypeFilter("all");
+    setDateRange(undefined);
+
+    // Clear all query parameters
+    router.push(pathname, { scroll: false });
+  };
+
+  // Create query string function
+  const createQueryString = useCallback(
+    (params: Record<string, string | number | null>) => {
+      const urlParams = new URLSearchParams(searchParams.toString());
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === null) {
+          urlParams.delete(key);
+        } else {
+          // Don't add limit to URL if it's the default value
+          if (key === "limit" && value === ITEMS_PER_PAGE) {
+            urlParams.delete("limit");
+          } else {
+            urlParams.set(key, value.toString());
+          }
+        }
+      });
+
+      return urlParams.toString();
+    },
+    [searchParams]
+  );
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params: Record<string, string | number | null> = {
+      // Always include page in the URL, don't use null value for page=1
+      page: page,
+      search: searchTerm || null,
+      visitType: visitTypeFilter === "all" ? null : visitTypeFilter,
+      status: statusFilter === "ALL" ? null : statusFilter,
+      startDate: dateRange?.from
+        ? dateRange.from.toISOString().split("T")[0]
+        : null,
+      endDate: dateRange?.to ? dateRange.to.toISOString().split("T")[0] : null,
+      limit: limit === ITEMS_PER_PAGE ? null : limit,
+    };
+
+    const queryString = createQueryString(params);
+    // Use replace instead of push to avoid caching issues
+    router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {
+      scroll: false,
+    });
+  }, [
+    page,
+    searchTerm,
+    visitTypeFilter,
+    statusFilter,
+    dateRange,
+    limit,
+    router,
+    pathname,
+    createQueryString,
+  ]);
+
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearchTerm, visitTypeFilter, dateRange]);
+  }, [searchTerm, visitTypeFilter, statusFilter, dateRange, limit]);
 
-  // Query for fetching visits with filters
-  const {
-    data: response,
-    isLoading,
-    error,
-    isError,
-  } = useQuery({
-    queryKey: ["visits", page, debouncedSearchTerm, visitTypeFilter, dateRange],
+  // Update local state if URL changes externally (like browser back button)
+  useEffect(() => {
+    const newSearch = searchParams.get("search") || "";
+    const newStatus = searchParams.get("status") || "ALL";
+    const newVisitType = searchParams.get("visitType") || "all";
+    const newStartDate = searchParams.get("startDate")
+      ? new Date(searchParams.get("startDate") || "")
+      : undefined;
+    const newEndDate = searchParams.get("endDate")
+      ? new Date(searchParams.get("endDate") || "")
+      : undefined;
+
+    if (newSearch !== searchTerm) setSearchTerm(newSearch);
+    if (newStatus !== statusFilter) setStatusFilter(newStatus);
+    if (newVisitType !== visitTypeFilter) setVisitTypeFilter(newVisitType);
+
+    // Only update date range if either date has changed
+    const currentStartISO = dateRange?.from?.toISOString();
+    const currentEndISO = dateRange?.to?.toISOString();
+    const newStartISO = newStartDate?.toISOString();
+    const newEndISO = newEndDate?.toISOString();
+
+    if (currentStartISO !== newStartISO || currentEndISO !== newEndISO) {
+      setDateRange({
+        from: newStartDate,
+        to: newEndDate,
+      });
+    }
+  }, [searchParams, searchTerm, statusFilter, visitTypeFilter, dateRange]);
+
+  // Fetch visits
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: [
+      "visits",
+      page,
+      limit,
+      debouncedSearchTerm,
+      visitTypeFilter,
+      statusFilter,
+      dateRange,
+    ],
     queryFn: () =>
       fetchVisits({
         pageParam: page,
+        limitParam: limit,
         searchTerm: debouncedSearchTerm,
         visitType: visitTypeFilter,
         dateRange,
       }),
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Update visit mutation
+  // Generate a key based on search params to force remount on change
+  const componentKey = searchParams.toString();
+
+  // Function to update a visit
   const updateVisitFn = async (data: {
     petId: string;
     visitId: string;
@@ -291,7 +389,7 @@ export default function VisitsPage() {
   }) => {
     const { petId, visitId, updateData } = data;
 
-    // Format date for API
+    // Format dates and prepare data for the API
     const formattedData = {
       ...updateData,
       visitDate: updateData.visitDate.toISOString(),
@@ -299,19 +397,36 @@ export default function VisitsPage() {
         ? updateData.nextReminderDate.toISOString()
         : null,
       price: updateData.price,
+      // Include vital signs
+      weight: updateData.weight,
+      weightUnit: updateData.weightUnit || "kg",
+      temperature: updateData.temperature,
+      heartRate: updateData.heartRate,
+      respiratoryRate: updateData.respiratoryRate,
+      bloodPressure: updateData.bloodPressure,
+      spo2: updateData.spo2,
+      crt: updateData.crt,
+      mmColor: updateData.mmColor,
+      painScore: updateData.painScore,
     };
 
-    const response = await axiosInstance.patch(
-      `/pets/${petId}/visits/${visitId}`,
-      formattedData
-    );
-    return response.data;
+    // Send the update request
+    try {
+      const response = await axiosInstance.patch(
+        `/pets/${petId}/visits/${visitId}`,
+        formattedData
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error updating visit:", error);
+      throw error;
+    }
   };
 
   const { mutate: updateVisit, isPending: isUpdatingVisit } = useMutation({
     mutationFn: updateVisitFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["visits"] });
+      queryClient.invalidateQueries({ queryKey: ["visits", "all"] });
       toast.success("Visit updated successfully");
       setIsEditDialogOpen(false);
       setEditingVisit(null);
@@ -336,7 +451,7 @@ export default function VisitsPage() {
   const { mutate: deleteVisit, isPending: isDeletingVisit } = useMutation({
     mutationFn: deleteVisitFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["visits"] });
+      queryClient.invalidateQueries({ queryKey: ["visits", "all"] });
       toast.success("Visit deleted successfully");
       setIsDeleteDialogOpen(false);
       setDeletingVisit(null);
@@ -351,6 +466,7 @@ export default function VisitsPage() {
 
   // Handler functions
   const handleEditClick = (visit: Visit) => {
+    // Set the current visit for editing
     setEditingVisit(visit);
     setIsEditDialogOpen(true);
   };
@@ -380,20 +496,40 @@ export default function VisitsPage() {
   };
 
   // Extract visits and metadata
-  const visits = response?.data || [];
-  const pagination = response?.pagination;
-
-  // Function to clear all filters
-  const clearFilters = () => {
-    setSearchTerm("");
-    setVisitTypeFilter("all");
-    setDateRange(undefined);
-    setPage(1);
-  };
+  const visits = data?.data || [];
+  const pagination = data?.pagination;
 
   // Check if any filters are active
   const hasActiveFilters =
-    debouncedSearchTerm || visitTypeFilter !== "all" || dateRange?.from;
+    debouncedSearchTerm ||
+    visitTypeFilter !== "all" ||
+    statusFilter !== "ALL" ||
+    dateRange?.from ||
+    dateRange?.to;
+
+  // Column visibility state
+  const [visitColumnsVisibility, setVisitColumnsVisibility] = useState({
+    visitDate: true,
+    pet: true,
+    owner: true,
+    visitType: true,
+    nextReminder: true,
+    price: true,
+    weight: true,
+    createdBy: false,
+    updatedBy: false,
+    createdAt: false,
+    updatedAt: false,
+    actions: true,
+  });
+
+  // Function to toggle column visibility
+  const toggleColumn = (column: keyof typeof visitColumnsVisibility) => {
+    setVisitColumnsVisibility((prev) => ({
+      ...prev,
+      [column]: !prev[column],
+    }));
+  };
 
   return (
     <div className="space-y-6">
@@ -404,7 +540,7 @@ export default function VisitsPage() {
         </p>
       </div>
 
-      <Card className="bg-white dark:bg-card">
+      <Card className="bg-white dark:bg-card" key={componentKey}>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl">
             <div className="flex items-center gap-2">
@@ -412,6 +548,162 @@ export default function VisitsPage() {
               All Clinic Visits
             </div>
           </CardTitle>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <SlidersHorizontal className="h-4 w-4 mr-2" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("visitDate")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.visitDate && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Date
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("pet")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.pet && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Pet
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("owner")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.owner && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Owner
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("visitType")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.visitType && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Visit Type
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("nextReminder")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.nextReminder && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Next Reminder
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("price")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.price && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Price
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("weight")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.weight && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Weight
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("createdBy")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.createdBy && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Created By
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("updatedBy")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.updatedBy && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Updated By
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("createdAt")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.createdAt && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Created At
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("updatedAt")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.updatedAt && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Updated At
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("actions")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.actions && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Actions
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardHeader>
 
         {/* Filter controls */}
@@ -503,18 +795,46 @@ export default function VisitsPage() {
               <Table className="w-full">
                 <TableHeader className="bg-muted/50">
                   <TableRow className="hover:bg-muted/50">
-                    <TableHead className="font-medium">Visit Date</TableHead>
-                    <TableHead className="font-medium">Pet</TableHead>
-                    <TableHead className="font-medium">Owner</TableHead>
-                    <TableHead className="font-medium">Visit Type</TableHead>
-                    <TableHead className="font-medium">Price</TableHead>
-                    <TableHead className="font-medium">Next Reminder</TableHead>
-                    <TableHead className="font-medium">
-                      Reminder Status
-                    </TableHead>
-                    <TableHead className="font-medium text-center w-20">
-                      Actions
-                    </TableHead>
+                    {visitColumnsVisibility.visitDate && (
+                      <TableHead className="font-medium">Visit Date</TableHead>
+                    )}
+                    {visitColumnsVisibility.pet && (
+                      <TableHead className="font-medium">Pet</TableHead>
+                    )}
+                    {visitColumnsVisibility.owner && (
+                      <TableHead className="font-medium">Owner</TableHead>
+                    )}
+                    {visitColumnsVisibility.visitType && (
+                      <TableHead className="font-medium">Visit Type</TableHead>
+                    )}
+                    {visitColumnsVisibility.price && (
+                      <TableHead className="font-medium">Price</TableHead>
+                    )}
+                    {visitColumnsVisibility.weight && (
+                      <TableHead className="font-medium">Weight</TableHead>
+                    )}
+                    {visitColumnsVisibility.nextReminder && (
+                      <TableHead className="font-medium">
+                        Next Reminder
+                      </TableHead>
+                    )}
+                    {visitColumnsVisibility.createdBy && (
+                      <TableHead className="font-medium">Created By</TableHead>
+                    )}
+                    {visitColumnsVisibility.updatedBy && (
+                      <TableHead className="font-medium">Updated By</TableHead>
+                    )}
+                    {visitColumnsVisibility.createdAt && (
+                      <TableHead className="font-medium">Created At</TableHead>
+                    )}
+                    {visitColumnsVisibility.updatedAt && (
+                      <TableHead className="font-medium">Updated At</TableHead>
+                    )}
+                    {visitColumnsVisibility.actions && (
+                      <TableHead className="font-medium text-center w-20">
+                        Actions
+                      </TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y">
@@ -523,30 +843,66 @@ export default function VisitsPage() {
                       key={`skeleton-${index}`}
                       className="hover:bg-muted/50"
                     >
-                      <TableCell className="text-muted-foreground">
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <Skeleton className="h-4 w-32" />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <Skeleton className="h-5 w-20" />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <Skeleton className="h-5 w-16" />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Skeleton className="h-8 w-8 mx-auto rounded-full" />
-                      </TableCell>
+                      {visitColumnsVisibility.visitDate && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.pet && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.owner && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-32" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.visitType && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-5 w-20" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.price && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.weight && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.nextReminder && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.createdBy && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.updatedBy && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.createdAt && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.updatedAt && (
+                        <TableCell className="text-muted-foreground">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.actions && (
+                        <TableCell className="text-center">
+                          <Skeleton className="h-8 w-8 mx-auto rounded-full" />
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -561,9 +917,7 @@ export default function VisitsPage() {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() =>
-                  queryClient.invalidateQueries({ queryKey: ["visits"] })
-                }
+                onClick={() => refetch()}
               >
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Retry
@@ -572,96 +926,162 @@ export default function VisitsPage() {
           ) : visits.length > 0 ? (
             <Table className="w-full">
               <TableCaption className="text-sm text-muted-foreground">
-                Showing page {pagination?.page} of {pagination?.totalPages} (
+                Showing page {currentPage} of {pagination?.totalPages} (
                 {pagination?.totalCount} total visits)
               </TableCaption>
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-muted/50">
-                  <TableHead className="font-medium">Visit Date</TableHead>
-                  <TableHead className="font-medium">Pet</TableHead>
-                  <TableHead className="font-medium">Owner</TableHead>
-                  <TableHead className="font-medium">Visit Type</TableHead>
-                  <TableHead className="font-medium">Price</TableHead>
-                  <TableHead className="font-medium">Next Reminder</TableHead>
-                  <TableHead className="font-medium">Reminder Status</TableHead>
-                  <TableHead className="font-medium text-center w-20">
-                    Actions
-                  </TableHead>
+                  {visitColumnsVisibility.visitDate && (
+                    <TableHead className="font-medium">Visit Date</TableHead>
+                  )}
+                  {visitColumnsVisibility.pet && (
+                    <TableHead className="font-medium">Pet</TableHead>
+                  )}
+                  {visitColumnsVisibility.owner && (
+                    <TableHead className="font-medium">Owner</TableHead>
+                  )}
+                  {visitColumnsVisibility.visitType && (
+                    <TableHead className="font-medium">Visit Type</TableHead>
+                  )}
+                  {visitColumnsVisibility.price && (
+                    <TableHead className="font-medium">Price</TableHead>
+                  )}
+                  {visitColumnsVisibility.weight && (
+                    <TableHead className="font-medium">Weight</TableHead>
+                  )}
+                  {visitColumnsVisibility.nextReminder && (
+                    <TableHead className="font-medium">Next Reminder</TableHead>
+                  )}
+                  {visitColumnsVisibility.createdBy && (
+                    <TableHead className="font-medium">Created By</TableHead>
+                  )}
+                  {visitColumnsVisibility.updatedBy && (
+                    <TableHead className="font-medium">Updated By</TableHead>
+                  )}
+                  {visitColumnsVisibility.createdAt && (
+                    <TableHead className="font-medium">Created At</TableHead>
+                  )}
+                  {visitColumnsVisibility.updatedAt && (
+                    <TableHead className="font-medium">Updated At</TableHead>
+                  )}
+                  {visitColumnsVisibility.actions && (
+                    <TableHead className="font-medium text-center w-20">
+                      Actions
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y">
                 {visits.map((visit: Visit) => {
-                  const visitDate = new Date(visit.visitDate);
-                  const reminderDate = visit.nextReminderDate
-                    ? new Date(visit.nextReminderDate)
-                    : null;
-
                   return (
                     <TableRow key={visit.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">
-                        {format(visitDate, "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {visit.pet.name}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {visit.pet.owner.firstName} {visit.pet.owner.lastName}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <Badge
-                          variant="outline"
-                          className={getVisitTypeBadgeColor(visit.visitType)}
-                        >
-                          {visit.visitType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatCurrency(visit.price)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {reminderDate
-                          ? format(reminderDate, "MMM d, yyyy")
-                          : "Not set"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {getReminderStatusBadge(
-                          visit.isReminderEnabled,
-                          visit.nextReminderDate
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                            >
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-[160px]"
+                      {visitColumnsVisibility.visitDate && (
+                        <TableCell className="font-medium">
+                          {formatDisplayDate(visit.visitDate)}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.pet && (
+                        <TableCell className="text-muted-foreground">
+                          {visit.pet.name}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.owner && (
+                        <TableCell className="text-muted-foreground">
+                          {visit.pet.owner.firstName} {visit.pet.owner.lastName}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.visitType && (
+                        <TableCell className="text-muted-foreground">
+                          <Badge
+                            variant="outline"
+                            className={getVisitTypeBadgeColor(visit.visitType)}
                           >
-                            <DropdownMenuItem
-                              onClick={() => handleEditClick(visit)}
-                              className="cursor-pointer text-left"
-                              inset={false}
+                            {visit.visitType}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.price && (
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                          {formatCurrency(visit.price)}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.weight && (
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                          {visit.weight
+                            ? `${visit.weight} ${visit.weightUnit || "kg"}`
+                            : "-"}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.nextReminder && (
+                        <TableCell className="hidden sm:table-cell text-muted-foreground">
+                          {visit.nextReminderDate
+                            ? formatDisplayDate(visit.nextReminderDate)
+                            : "-"}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.createdBy && (
+                        <TableCell className="text-muted-foreground">
+                          {visit.createdBy
+                            ? `${visit.createdBy.firstName || ""} ${
+                                visit.createdBy.lastName || ""
+                              }`.trim() || "Unknown"
+                            : "System"}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.updatedBy && (
+                        <TableCell className="text-muted-foreground">
+                          {visit.updatedBy
+                            ? `${visit.updatedBy.firstName || ""} ${
+                                visit.updatedBy.lastName || ""
+                              }`.trim() || "Unknown"
+                            : "System"}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.createdAt && (
+                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                          {formatDisplayDateTime(visit.createdAt)}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.updatedAt && (
+                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
+                          {formatDisplayDateTime(visit.updatedAt)}
+                        </TableCell>
+                      )}
+                      {visitColumnsVisibility.actions && (
+                        <TableCell className="text-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-[160px]"
                             >
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600 cursor-pointer text-left"
-                              onClick={() => handleDeleteClick(visit)}
-                              inset={false}
-                            >
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                              <DropdownMenuItem
+                                onClick={() => handleEditClick(visit)}
+                                className="cursor-pointer text-left"
+                                inset={false}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600 cursor-pointer text-left"
+                                onClick={() => handleDeleteClick(visit)}
+                                inset={false}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}
@@ -689,88 +1109,80 @@ export default function VisitsPage() {
             </div>
           )}
 
-          {/* Pagination */}
-          {pagination && pagination.totalPages > 1 && (
-            <div className="px-6 py-6 border-t">
-              <div className="flex flex-col items-center">
-                <div className="text-sm text-muted-foreground mb-3">
-                  Page {pagination.page} of {pagination.totalPages} (
-                  {pagination.totalCount} total visits)
-                </div>
+          {/* Pagination Controls */}
+          {data?.pagination && data.pagination.totalCount > 0 && (
+            <div className="px-6 py-4 border-t">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm font-medium">Rows per page</p>
+                  <Select
+                    value={`${limit}`}
+                    onValueChange={(value: string) => {
+                      const newLimit = Number(value);
+                      setLimit(newLimit);
+                      setPage(1); // Reset page when limit changes
 
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPage((p) => Math.max(1, p - 1));
-                        }}
-                        aria-disabled={pagination.page <= 1}
-                        className={
-                          pagination.page <= 1
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
+                      // Update URL immediately to bypass Next.js streaming cache issues
+                      const params = new URLSearchParams(
+                        searchParams.toString()
+                      );
 
-                    {/* Generate page numbers */}
-                    {Array.from({
-                      length: Math.min(5, pagination.totalPages),
-                    }).map((_, i) => {
-                      // Logic to show pages around current page
-                      let pageNum;
-                      if (pagination.totalPages <= 5) {
-                        // If 5 or fewer pages, show all page numbers
-                        pageNum = i + 1;
-                      } else if (pagination.page <= 3) {
-                        // If near the start, show first 5 pages
-                        pageNum = i + 1;
-                      } else if (pagination.page >= pagination.totalPages - 2) {
-                        // If near the end, show last 5 pages
-                        pageNum = pagination.totalPages - 4 + i;
+                      // Always set page explicitly to 1
+                      params.set("page", "1");
+
+                      // Update limit parameter
+                      if (newLimit === ITEMS_PER_PAGE) {
+                        params.delete("limit");
                       } else {
-                        // Otherwise show current page and 2 pages before and after
-                        pageNum = pagination.page - 2 + i;
+                        params.set("limit", newLimit.toString());
                       }
 
-                      return (
-                        <PaginationItem key={pageNum}>
-                          <PaginationLink
-                            href="#"
-                            isActive={pageNum === pagination.page}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setPage(pageNum);
-                            }}
-                          >
-                            {pageNum}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    })}
+                      router.replace(`${pathname}?${params.toString()}`, {
+                        scroll: false,
+                      });
 
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPage((p) =>
-                            Math.min(pagination.totalPages, p + 1)
-                          );
-                        }}
-                        aria-disabled={pagination.page >= pagination.totalPages}
-                        className={
-                          pagination.page >= pagination.totalPages
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+                      // Force React Query to refetch with the new limit
+                      queryClient.invalidateQueries({ queryKey: ["visits"] });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue placeholder={limit} />
+                    </SelectTrigger>
+                    <SelectContent side="top" className="">
+                      {PAGE_SIZES.map((pageSize) => (
+                        <SelectItem
+                          key={pageSize}
+                          value={`${pageSize}`}
+                          className=""
+                        >
+                          {pageSize}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <SimplePagination
+                  currentPage={page}
+                  totalPages={Math.ceil(
+                    (data?.pagination?.totalCount ?? 0) / limit
+                  )}
+                  totalCount={data?.pagination?.totalCount ?? 0}
+                  onPageChange={(newPage) => {
+                    setPage(newPage);
+
+                    // Update URL with new page
+                    const urlParams = new URLSearchParams(
+                      searchParams.toString()
+                    );
+                    urlParams.set("page", newPage.toString());
+
+                    // Use replace to avoid caching issues
+                    router.replace(`${pathname}?${urlParams.toString()}`, {
+                      scroll: false,
+                    });
+                  }}
+                />
               </div>
             </div>
           )}
@@ -779,7 +1191,7 @@ export default function VisitsPage() {
 
       {/* Edit Visit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Visit</DialogTitle>
             <DialogDescription>
@@ -822,7 +1234,7 @@ export default function VisitsPage() {
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -830,7 +1242,7 @@ export default function VisitsPage() {
               <span className="font-semibold">{deletingVisit?.pet.name}</span>{" "}
               on{" "}
               {deletingVisit?.visitDate
-                ? format(new Date(deletingVisit.visitDate), "MMMM d, yyyy")
+                ? formatDisplayDate(deletingVisit.visitDate)
                 : "unknown date"}
               . This action cannot be undone.
             </AlertDialogDescription>

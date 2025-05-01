@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards, HttpCode, HttpStatus, Query, Request } from '@nestjs/common';
 import { ClinicsService } from './clinics.service';
 import { AdminGuard } from '../../auth/guards/admin.guard';
 import { UpdateClinicSettingsDto } from './dto/update-clinic-settings.dto';
@@ -8,12 +8,12 @@ import { AdminClinicListQueryDto } from './dto/admin-clinic-list-query.dto';
 @Controller('admin/clinics')
 @UseGuards(AdminGuard)
 export class ClinicsController {
-  constructor(private readonly clinicsService: ClinicsService) {}
+  constructor(private readonly clinicsService: ClinicsService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  createClinic(@Body() createClinicDto: CreateClinicDto) {
-    return this.clinicsService.createClinic(createClinicDto);
+  createClinic(@Body() createClinicDto: CreateClinicDto, @Request() req) {
+    return this.clinicsService.createClinic(createClinicDto, req.user);
   }
 
   @Get()
@@ -30,7 +30,8 @@ export class ClinicsController {
   updateClinicSettings(
     @Param('id') id: string,
     @Body() updateClinicSettingsDto: UpdateClinicSettingsDto,
+    @Request() req,
   ) {
-    return this.clinicsService.updateClinicSettings(id, updateClinicSettingsDto);
+    return this.clinicsService.updateClinicSettings(id, updateClinicSettingsDto, req.user);
   }
 }

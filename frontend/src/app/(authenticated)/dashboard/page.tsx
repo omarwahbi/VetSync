@@ -2,7 +2,6 @@
 
 import { useAuthStore } from "@/store/auth";
 import { useQuery } from "@tanstack/react-query";
-import { format, isToday } from "date-fns";
 import {
   CalendarClock,
   Users,
@@ -25,7 +24,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { NewClientWizard } from "@/components/wizards/new-client-wizard";
-import { cn } from "@/lib/utils";
+import { QuickAddVisitModal } from "@/components/forms/quick-add-visit-modal";
+import { cn, formatDisplayDate } from "@/lib/utils";
 
 // Simple Skeleton component for loading states
 const Skeleton = ({ className = "" }: { className?: string }) => (
@@ -87,6 +87,7 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
   const userRole = user?.role;
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
 
   // Query for fetching dashboard stats
   const {
@@ -146,15 +147,26 @@ export default function DashboardPage() {
               : "Welcome to your dashboard!"}
           </p>
         </div>
-        <Button
-          variant="default"
-          size="sm"
-          className="flex items-center gap-1 whitespace-nowrap"
-          onClick={() => setIsWizardOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Register New Client
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1 whitespace-nowrap"
+            onClick={() => setIsVisitModalOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            New Visit
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            className="flex items-center gap-1 whitespace-nowrap"
+            onClick={() => setIsWizardOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Register New Client
+          </Button>
+        </div>
       </div>
 
       {/* Only show stats cards for ADMIN and CLINIC_ADMIN users */}
@@ -245,49 +257,47 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Pet Name</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Visit Type</TableHead>
-                    <TableHead>Reminder Date</TableHead>
+              <Table className="min-w-full border-collapse">
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="w-[180px]">Pet</TableHead>
+                    <TableHead className="w-[180px]">Owner</TableHead>
+                    <TableHead className="w-[120px]">Due Date</TableHead>
+                    <TableHead className="w-[120px]">Type</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {upcomingVisits.map((visit) => (
-                    <TableRow key={visit.id}>
-                      <TableCell className="font-medium">
-                        {visit.pet.name}
-                      </TableCell>
-                      <TableCell>
-                        {`${visit.pet.owner.firstName} ${visit.pet.owner.lastName}`}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            getVisitTypeBadgeColor(visit.visitType)
-                          )}
-                        >
-                          {visit.visitType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {visit.nextReminderDate
-                          ? format(
-                              new Date(visit.nextReminderDate),
-                              "dd MMM yyyy"
-                            )
-                          : "No reminder"}
-                        {isToday(new Date(visit.nextReminderDate)) && (
-                          <Badge variant="destructive" className="ml-2">
-                            Today
-                          </Badge>
-                        )}
+                  {upcomingVisits.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        No upcoming visits found.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    upcomingVisits.map((visit) => (
+                      <TableRow key={visit.id}>
+                        <TableCell className="font-medium">
+                          {visit.pet.name}
+                        </TableCell>
+                        <TableCell>
+                          {visit.pet.owner.firstName} {visit.pet.owner.lastName}
+                        </TableCell>
+                        <TableCell>
+                          {formatDisplayDate(visit.nextReminderDate)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={cn(
+                              "capitalize",
+                              getVisitTypeBadgeColor(visit.visitType)
+                            )}
+                          >
+                            {visit.visitType.toLowerCase()}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -301,6 +311,11 @@ export default function DashboardPage() {
           onClose={() => setIsWizardOpen(false)}
         />
       )}
+
+      <QuickAddVisitModal
+        isOpen={isVisitModalOpen}
+        onClose={() => setIsVisitModalOpen(false)}
+      />
     </div>
   );
 }

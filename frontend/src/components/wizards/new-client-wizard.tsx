@@ -186,7 +186,10 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{getStepTitle()}</DialogTitle>
           <DialogDescription>{getStepDescription()}</DialogDescription>
@@ -235,16 +238,14 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
 
         <DialogFooter className="flex flex-col-reverse sm:flex-row items-center gap-2 sm:justify-between">
           <div>
-            {step > 1 && (
-              <Button
-                variant="outline"
-                onClick={() => setStep((s) => s - 1)}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto"
-              >
-                Previous
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              onClick={() => handleClose()}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
+              Close
+            </Button>
           </div>
           <div>
             {step < 3 ? (

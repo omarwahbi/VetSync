@@ -23,7 +23,14 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // If error is 401 and we haven't tried to refresh the token yet
+    // Track retry attempts
+    if (originalRequest._retryCount === undefined) {
+      originalRequest._retryCount = 0;
+    }
+    
+    const MAX_RETRIES = 3;
+    
+    // Handle 401 Unauthorized with token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
@@ -53,26 +60,37 @@ axiosInstance.interceptors.response.use(
         
         // Retry the original request with the new token
         return axiosInstance(originalRequest);
-      } catch (refreshError: unknown) {
-        console.error('Token refresh failed:', refreshError);
-        
-        // Force local logout: Clear token/user from Zustand state
+      } catch (refreshError) {
+        console.log('Error refreshing token:', refreshError);
         useAuthStore.getState().logout();
         
-        // Force redirect to login page (using window.location is more forceful)
-        // Check if window exists (prevent server-side errors) and not already on login
         if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-          console.log("Redirecting to login due to refresh failure.");
           window.location.href = '/login';
         }
         
-        // Crucially, REJECT the promise to stop the interceptor chain 
-        // and prevent the original request from being retried incorrectly
         return Promise.reject(refreshError);
       }
     }
     
-    // If error is not 401 or we've already tried to refresh, just reject with original error
+    // Handle server errors (5xx) and network errors with retry logic and exponential backoff
+    const isServerError = error.response?.status >= 500;
+    const isNetworkError = error.message === 'Network Error' || !error.response;
+    
+    if ((isServerError || isNetworkError) && originalRequest._retryCount < MAX_RETRIES) {
+      originalRequest._retryCount++;
+      
+      // Calculate delay with exponential backoff (1s, 2s, 4s)
+      const delay = Math.pow(2, originalRequest._retryCount - 1) * 1000;
+      
+      console.log(`Retrying request (${originalRequest._retryCount}/${MAX_RETRIES}) after ${delay}ms`);
+      
+      // Wait for the calculated delay
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      // Retry the request
+      return axiosInstance(originalRequest);
+    }
+    
     return Promise.reject(error);
   }
 );

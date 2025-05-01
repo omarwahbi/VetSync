@@ -5,7 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/lib/axios";
-import { format, isValid, parseISO } from "date-fns";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import { formatDisplayDate, formatDisplayDateTime } from "@/lib/utils";
 import {
   PawPrint,
   User,
@@ -21,9 +23,9 @@ import {
   VenetianMask,
   Trash2,
   Loader2,
+  SlidersHorizontal,
+  Check,
 } from "lucide-react";
-import { toast } from "sonner";
-import { AxiosError } from "axios";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +44,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu.jsx";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +70,12 @@ const Skeleton = ({ className = "" }: { className?: string }) => (
   <div className={`bg-muted animate-pulse rounded ${className}`} />
 );
 
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
 interface Owner {
   id: string;
   firstName: string;
@@ -84,6 +92,10 @@ interface Visit {
   nextReminderDate: string | null;
   isReminderEnabled: boolean;
   price: number | null;
+  createdBy?: User;
+  updatedBy?: User;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Pet {
@@ -96,6 +108,10 @@ interface Pet {
   notes: string | null;
   owner: Owner;
   visits?: Visit[];
+  createdAt: string;
+  updatedAt?: string;
+  createdBy?: User;
+  updatedBy?: User;
 }
 
 // Type definition for API error response
@@ -107,27 +123,6 @@ interface ErrorResponse {
 const fetchPetDetails = async (petId: string): Promise<Pet> => {
   const response = await axiosInstance.get(`/pets/${petId}`);
   return response.data;
-};
-
-// Helper for safe date formatting
-const formatDate = (dateString: string | null | undefined): string => {
-  if (!dateString) return "-";
-  try {
-    // First try parsing as ISO
-    const date = parseISO(dateString);
-    if (isValid(date)) {
-      return format(date, "PPP");
-    }
-    // If that fails, try regular Date constructor
-    const fallbackDate = new Date(dateString);
-    if (isValid(fallbackDate)) {
-      return format(fallbackDate, "PPP");
-    }
-    return "-";
-  } catch (error) {
-    console.error("Date parsing error:", error);
-    return "-";
-  }
 };
 
 // Function to format currency
@@ -159,6 +154,19 @@ export default function PetDetailsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null);
 
+  // Column visibility state for visits table - simplified
+  const [visitColumnsVisibility, setVisitColumnsVisibility] = useState({
+    date: true,
+    type: true,
+    notes: true,
+    nextReminder: true,
+    reminderStatus: true,
+    price: true,
+    createdBy: false,
+    updatedBy: false,
+    actions: true,
+  });
+
   const {
     data: petData,
     isLoading,
@@ -168,6 +176,8 @@ export default function PetDetailsPage() {
     queryKey: ["pet", petId],
     queryFn: () => fetchPetDetails(petId),
     enabled: !!petId,
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
   });
 
   // Update pet mutation
@@ -180,6 +190,7 @@ export default function PetDetailsPage() {
       return response.data;
     },
     onSuccess: () => {
+      // Invalidate the pet cache
       queryClient.invalidateQueries({ queryKey: ["pet", petId] });
       setIsPetDialogOpen(false);
       toast.success("Pet updated successfully");
@@ -211,9 +222,10 @@ export default function PetDetailsPage() {
       return response.data;
     },
     onSuccess: () => {
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["pet", petId] });
-      // Also invalidate visits list if you have a global visits query
       queryClient.invalidateQueries({ queryKey: ["visits", petId] });
+
       setIsVisitDialogOpen(false);
       toast.success("Visit created successfully");
     },
@@ -249,9 +261,10 @@ export default function PetDetailsPage() {
       return response.data;
     },
     onSuccess: () => {
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["pet", petId] });
-      // Also invalidate visits list if you have a global visits query
       queryClient.invalidateQueries({ queryKey: ["visits", petId] });
+
       setIsVisitEditDialogOpen(false);
       setEditingVisit(null);
       toast.success("Visit updated successfully");
@@ -276,6 +289,7 @@ export default function PetDetailsPage() {
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["pets"] });
+
       if (petData?.owner?.id) {
         queryClient.invalidateQueries({
           queryKey: ["owner", petData.owner.id],
@@ -299,12 +313,11 @@ export default function PetDetailsPage() {
   // Delete visit mutation
   const { mutate: deleteVisit, isPending: isDeletingVisit } = useMutation({
     mutationFn: async (ids: { petId: string; visitId: string }) => {
-      const response = await axiosInstance.delete(
-        `/pets/${ids.petId}/visits/${ids.visitId}`
-      );
-      return response.data;
+      await axiosInstance.delete(`/pets/${ids.petId}/visits/${ids.visitId}`);
+      return ids.visitId; // Return the visitId for cache updates
     },
     onSuccess: () => {
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["pet", petId] });
       queryClient.invalidateQueries({ queryKey: ["visits", petId] });
 
@@ -318,6 +331,14 @@ export default function PetDetailsPage() {
       setDeletingVisit(null);
     },
   });
+
+  // Function to toggle column visibility
+  const toggleColumn = (column: keyof typeof visitColumnsVisibility) => {
+    setVisitColumnsVisibility((prev) => ({
+      ...prev,
+      [column]: !prev[column],
+    }));
+  };
 
   const handleUpdatePet = (formData: PetFormValues) => {
     // Convert dates to ISO strings for API
@@ -454,9 +475,6 @@ export default function PetDetailsPage() {
     );
   }
 
-  // Format the pet's birth date if available
-  const formattedBirthDate = formatDate(petData.birthDate);
-
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
@@ -557,10 +575,13 @@ export default function PetDetailsPage() {
               </div>
             )}
 
-            <div className="flex items-center">
-              <Cake className="h-5 w-5 mr-2 text-muted-foreground" />
-              <span className="font-medium mr-2">Birth Date:</span>
-              <span>{formattedBirthDate}</span>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Birth Date
+              </p>
+              <p className="text-base">
+                {formatDisplayDate(petData.birthDate)}
+              </p>
             </div>
 
             {petData.gender && (
@@ -579,6 +600,14 @@ export default function PetDetailsPage() {
                 <p className="mt-1 text-muted-foreground">{petData.notes}</p>
               </div>
             )}
+
+            {/* Audit Information */}
+            <div className="text-xs text-muted-foreground mt-4">
+              <p>Created: {formatDisplayDateTime(petData.createdAt)}</p>
+              {petData.updatedAt && petData.updatedAt !== petData.createdAt && (
+                <p>Last updated: {formatDisplayDateTime(petData.updatedAt)}</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -589,14 +618,122 @@ export default function PetDetailsPage() {
             <ClipboardList className="h-5 w-5 mr-2 text-muted-foreground" />
             Visit History
           </CardTitle>
-          <Button
-            size="sm"
-            className="flex items-center gap-1"
-            onClick={() => setIsVisitDialogOpen(true)}
-          >
-            <PlusCircle className="h-4 w-4" />
-            Add New Visit
-          </Button>
+          <div className="flex space-x-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <SlidersHorizontal className="h-4 w-4 mr-2" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("type")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.type && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Type
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("notes")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.notes && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Notes
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("nextReminder")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.nextReminder && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Next Reminder
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("reminderStatus")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.reminderStatus && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Reminder Status
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("price")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.price && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Price
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("createdBy")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.createdBy && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Created By
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("updatedBy")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.updatedBy && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Updated By
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => toggleColumn("actions")}
+                  inset={false}
+                >
+                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                    {visitColumnsVisibility.actions && (
+                      <Check className="h-3 w-3" />
+                    )}
+                  </div>
+                  Actions
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={() => setIsVisitDialogOpen(true)}
+            >
+              <PlusCircle className="h-4 w-4" />
+              Add New Visit
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="">
           {petData.visits && petData.visits.length > 0 ? (
@@ -605,94 +742,138 @@ export default function PetDetailsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="font-medium">Date</TableHead>
-                  <TableHead className="font-medium">Type</TableHead>
-                  <TableHead className="font-medium">Notes</TableHead>
-                  <TableHead className="font-medium">Next Reminder</TableHead>
-                  <TableHead className="font-medium">Reminder</TableHead>
-                  <TableHead className="font-medium">Price</TableHead>
-                  <TableHead className="text-right font-medium">
-                    Actions
-                  </TableHead>
+                  {visitColumnsVisibility.type && (
+                    <TableHead className="font-medium">Type</TableHead>
+                  )}
+                  {visitColumnsVisibility.notes && (
+                    <TableHead className="font-medium">Notes</TableHead>
+                  )}
+                  {visitColumnsVisibility.nextReminder && (
+                    <TableHead className="font-medium">Next Reminder</TableHead>
+                  )}
+                  {visitColumnsVisibility.reminderStatus && (
+                    <TableHead className="font-medium">Reminder</TableHead>
+                  )}
+                  {visitColumnsVisibility.price && (
+                    <TableHead className="font-medium">Price</TableHead>
+                  )}
+                  {visitColumnsVisibility.createdBy && (
+                    <TableHead className="font-medium">Created By</TableHead>
+                  )}
+                  {visitColumnsVisibility.updatedBy && (
+                    <TableHead className="font-medium">Updated By</TableHead>
+                  )}
+                  {visitColumnsVisibility.actions && (
+                    <TableHead className="text-right font-medium">
+                      Actions
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {petData.visits.map((visit) => (
                   <TableRow key={visit.id}>
-                    <TableCell className="font-medium">
-                      {formatDate(visit.visitDate)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <Badge
-                        variant="outline"
-                        className="bg-blue-50 text-blue-800"
-                      >
-                        {visit.visitType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {visit.notes
-                        ? visit.notes.length > 50
-                          ? `${visit.notes.substring(0, 50)}...`
-                          : visit.notes
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(visit.nextReminderDate)}
-                    </TableCell>
-                    <TableCell>
-                      {visit.isReminderEnabled ? (
-                        <span className="flex items-center text-green-600">
-                          <Bell className="h-4 w-4 mr-1" />
-                          On
-                        </span>
-                      ) : (
-                        <span className="flex items-center text-gray-500">
-                          <BellOff className="h-4 w-4 mr-1" />
-                          Off
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatCurrency(visit.price)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 p-0"
-                          >
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem
-                            className="cursor-pointer"
-                            inset={false}
-                            onClick={() => {
-                              setEditingVisit(visit);
-                              setIsVisitEditDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Visit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="cursor-pointer text-red-600"
-                            inset={false}
-                            onClick={(e: React.MouseEvent) => {
-                              e.preventDefault();
-                              setDeletingVisit(visit);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Visit
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                    <TableCell>{formatDisplayDate(visit.visitDate)}</TableCell>
+                    {visitColumnsVisibility.type && (
+                      <TableCell className="text-muted-foreground">
+                        <Badge
+                          variant="outline"
+                          className="bg-blue-50 text-blue-800"
+                        >
+                          {visit.visitType}
+                        </Badge>
+                      </TableCell>
+                    )}
+                    {visitColumnsVisibility.notes && (
+                      <TableCell className="text-muted-foreground max-w-xs truncate">
+                        {visit.notes || "-"}
+                      </TableCell>
+                    )}
+                    {visitColumnsVisibility.nextReminder && (
+                      <TableCell className="hidden md:table-cell">
+                        {visit.nextReminderDate
+                          ? formatDisplayDate(visit.nextReminderDate)
+                          : "-"}
+                      </TableCell>
+                    )}
+                    {visitColumnsVisibility.reminderStatus && (
+                      <TableCell>
+                        {visit.isReminderEnabled ? (
+                          <span className="flex items-center text-green-600">
+                            <Bell className="h-4 w-4 mr-1" />
+                            On
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-gray-500">
+                            <BellOff className="h-4 w-4 mr-1" />
+                            Off
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
+                    {visitColumnsVisibility.price && (
+                      <TableCell className="text-muted-foreground">
+                        {formatCurrency(visit.price)}
+                      </TableCell>
+                    )}
+                    {visitColumnsVisibility.createdBy && (
+                      <TableCell className="text-muted-foreground">
+                        {visit.createdBy
+                          ? `${visit.createdBy.firstName || ""} ${
+                              visit.createdBy.lastName || ""
+                            }`.trim() || "Unknown"
+                          : "System"}
+                      </TableCell>
+                    )}
+                    {visitColumnsVisibility.updatedBy && (
+                      <TableCell className="text-muted-foreground">
+                        {visit.updatedBy
+                          ? `${visit.updatedBy.firstName || ""} ${
+                              visit.updatedBy.lastName || ""
+                            }`.trim() || "Unknown"
+                          : "System"}
+                      </TableCell>
+                    )}
+                    {visitColumnsVisibility.actions && (
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 p-0"
+                            >
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36">
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              inset={false}
+                              onClick={() => {
+                                setEditingVisit(visit);
+                                setIsVisitEditDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Visit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="cursor-pointer text-red-600"
+                              inset={false}
+                              onClick={(e: React.MouseEvent) => {
+                                e.preventDefault();
+                                setDeletingVisit(visit);
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Visit
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -717,7 +898,10 @@ export default function PetDetailsPage() {
 
       {/* Edit Pet Dialog */}
       <Dialog open={isPetDialogOpen} onOpenChange={setIsPetDialogOpen}>
-        <DialogContent>
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Edit Pet</DialogTitle>
           </DialogHeader>
@@ -746,7 +930,10 @@ export default function PetDetailsPage() {
 
       {/* Add Visit Dialog */}
       <Dialog open={isVisitDialogOpen} onOpenChange={setIsVisitDialogOpen}>
-        <DialogContent>
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Add New Visit</DialogTitle>
           </DialogHeader>
@@ -770,7 +957,10 @@ export default function PetDetailsPage() {
         open={isVisitEditDialogOpen}
         onOpenChange={setIsVisitEditDialogOpen}
       >
-        <DialogContent>
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Edit Visit</DialogTitle>
           </DialogHeader>
@@ -816,7 +1006,9 @@ export default function PetDetailsPage() {
               This action will permanently delete this visit record for{" "}
               <span className="font-medium">{petData?.name}</span> on{" "}
               <span className="font-medium">
-                {deletingVisit ? formatDate(deletingVisit.visitDate) : ""}
+                {deletingVisit
+                  ? formatDisplayDate(deletingVisit.visitDate)
+                  : ""}
               </span>
               .
             </AlertDialogDescription>

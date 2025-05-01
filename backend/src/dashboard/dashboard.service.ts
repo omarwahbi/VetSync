@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class DashboardService {
+  private readonly logger = new Logger(DashboardService.name);
   constructor(private prisma: PrismaService) {}
 
   async getStats(user: { clinicId?: string | null; role?: string }) {
@@ -61,14 +62,37 @@ export class DashboardService {
       },
     });
 
-    // Calculate date range for today
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0); // Beginning of today
-
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999); // End of today
+    // Calculate date range for today using UTC to avoid timezone issues
+    const now = new Date();
+    const startOfUTCToday = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const endOfUTCToday = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
     
-    // Get the count of reminders due today
+    // Log these UTC dates for debugging if needed
+    this.logger.debug(
+      `UTC Today boundaries: ${startOfUTCToday.toISOString()} to ${endOfUTCToday.toISOString()}`,
+    );
+    
+    // Get the count of reminders due today using UTC day boundaries
     const dueTodayCount = await this.prisma.visit.count({
       where: {
         pet: {
@@ -77,8 +101,8 @@ export class DashboardService {
           },
         },
         nextReminderDate: {
-          gte: todayStart,
-          lte: todayEnd,
+          gte: startOfUTCToday,
+          lte: endOfUTCToday,
         },
         // Only count reminders that are enabled
         isReminderEnabled: true,

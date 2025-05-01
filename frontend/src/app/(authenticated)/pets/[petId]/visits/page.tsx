@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { Plus, Calendar, MoreHorizontal, Edit, Trash2 } from "lucide-react";
-import { format } from "date-fns";
 import axiosInstance from "@/lib/axios";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
@@ -48,6 +47,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { VisitForm, VisitFormValues } from "@/components/forms/visit-form";
+import { formatDateForDisplay } from "@/lib/utils";
 
 // Interface definitions
 interface Visit {
@@ -62,6 +62,16 @@ interface Visit {
   updatedAt: string;
   petId: string;
   price?: number | null;
+  weight?: number | null;
+  weightUnit?: "kg" | "lb";
+  temperature?: number | null;
+  heartRate?: number | null;
+  respiratoryRate?: number | null;
+  bloodPressure?: string | null;
+  spo2?: number | null;
+  crt?: string | null;
+  mmColor?: string | null;
+  painScore?: number | null;
   initialFormData?: VisitFormValues;
 }
 
@@ -82,6 +92,7 @@ interface Pet {
   ownerId: string;
   notes?: string;
   owner?: Owner;
+  visits?: Visit[];
 }
 
 // Type definition for API error response
@@ -95,36 +106,15 @@ const fetchVisits = async (petId: string): Promise<Visit[]> => {
   return response.data;
 };
 
-// Function to fetch all pets to find the one we need
+// Function to fetch the pet directly
 const fetchPet = async (petId: string): Promise<Pet> => {
-  // Get all owners
-  const ownersResponse = await axiosInstance.get("/owners");
-  // Extract the owners array from the data property in the response
-  const owners = ownersResponse.data.data || [];
-
-  // Iterate through owners to find the pet
-  for (const owner of owners) {
-    try {
-      const petResponse = await axiosInstance.get(
-        `/owners/${owner.id}/pets/${petId}`
-      );
-      // Add owner to the pet data for access to allowAutomatedReminders
-      return {
-        ...petResponse.data,
-        owner: {
-          id: owner.id,
-          firstName: owner.firstName,
-          lastName: owner.lastName,
-          allowAutomatedReminders: owner.allowAutomatedReminders,
-        },
-      };
-    } catch {
-      // Continue searching if pet not found with this owner
-      continue;
-    }
+  try {
+    const response = await axiosInstance.get(`/pets/${petId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching pet details:", error);
+    throw new Error("Pet not found");
   }
-
-  throw new Error("Pet not found");
 };
 
 // Function to get appropriate badge color for visit type
@@ -142,17 +132,6 @@ const getVisitTypeBadgeColor = (visitType: string) => {
       return "bg-cyan-100 text-cyan-800 hover:bg-cyan-100";
     default:
       return "bg-gray-100 text-gray-800 hover:bg-gray-100";
-  }
-};
-
-// Function to format date string for display
-const formatDate = (dateString?: string) => {
-  if (!dateString) return "N/A";
-  try {
-    return format(new Date(dateString), "PPP");
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return "Invalid date";
   }
 };
 
@@ -195,6 +174,8 @@ export default function PetVisitsPage() {
     queryKey: ["visits", petId],
     queryFn: () => fetchVisits(petId),
     enabled: !!petId,
+    staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false,
   });
 
   // Query for fetching the pet's details
@@ -207,17 +188,30 @@ export default function PetVisitsPage() {
     queryKey: ["pet", petId],
     queryFn: () => fetchPet(petId),
     enabled: !!petId,
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
   });
 
   // Function for creating a new visit
   const createVisitFn = async (newVisitData: VisitFormValues) => {
-    // Format date for API if it exists
+    // Format dates for API
     const formattedData = {
       ...newVisitData,
       nextReminderDate: newVisitData.nextReminderDate
         ? newVisitData.nextReminderDate.toISOString()
         : null,
       price: newVisitData.price,
+      // Include vital signs
+      weight: newVisitData.weight,
+      weightUnit: newVisitData.weightUnit || "kg",
+      temperature: newVisitData.temperature,
+      heartRate: newVisitData.heartRate,
+      respiratoryRate: newVisitData.respiratoryRate,
+      bloodPressure: newVisitData.bloodPressure,
+      spo2: newVisitData.spo2,
+      crt: newVisitData.crt,
+      mmColor: newVisitData.mmColor,
+      painScore: newVisitData.painScore,
     };
 
     const response = await axiosInstance.post(
@@ -230,7 +224,10 @@ export default function PetVisitsPage() {
   const { mutate: createVisit, isPending: isCreatingVisit } = useMutation({
     mutationFn: createVisitFn,
     onSuccess: () => {
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["visits", petId] });
+      queryClient.invalidateQueries({ queryKey: ["pet", petId] });
+
       toast.success("Visit added successfully");
       setIsVisitDialogOpen(false);
     },
@@ -257,6 +254,17 @@ export default function PetVisitsPage() {
         ? updateData.nextReminderDate.toISOString()
         : null,
       price: updateData.price,
+      // Include vital signs
+      weight: updateData.weight,
+      weightUnit: updateData.weightUnit || "kg",
+      temperature: updateData.temperature,
+      heartRate: updateData.heartRate,
+      respiratoryRate: updateData.respiratoryRate,
+      bloodPressure: updateData.bloodPressure,
+      spo2: updateData.spo2,
+      crt: updateData.crt,
+      mmColor: updateData.mmColor,
+      painScore: updateData.painScore,
     };
 
     const response = await axiosInstance.patch(
@@ -269,7 +277,10 @@ export default function PetVisitsPage() {
   const { mutate: updateVisit, isPending: isUpdatingVisit } = useMutation({
     mutationFn: updateVisitFn,
     onSuccess: () => {
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["visits", petId] });
+      queryClient.invalidateQueries({ queryKey: ["pet", petId] });
+
       toast.success("Visit updated successfully");
       setIsEditDialogOpen(false);
       setEditingVisit(null);
@@ -284,16 +295,17 @@ export default function PetVisitsPage() {
 
   // Function for deleting a visit
   const deleteVisitFn = async (visitId: string) => {
-    const response = await axiosInstance.delete(
-      `/pets/${petId}/visits/${visitId}`
-    );
-    return response.data;
+    await axiosInstance.delete(`/pets/${petId}/visits/${visitId}`);
+    return visitId; // Return the visitId for use in onSuccess
   };
 
   const { mutate: deleteVisit, isPending: isDeletingVisit } = useMutation({
     mutationFn: deleteVisitFn,
     onSuccess: () => {
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ["visits", petId] });
+      queryClient.invalidateQueries({ queryKey: ["pet", petId] });
+
       toast.success("Visit deleted successfully");
       setDeletingVisit(null);
     },
@@ -311,25 +323,31 @@ export default function PetVisitsPage() {
   };
 
   const handleEditClick = (visit: Visit) => {
-    // Convert string dates to Date objects for the form
-    const initialFormData: VisitFormValues = {
+    setEditingVisit(visit);
+    setIsEditDialogOpen(true);
+
+    // Prepare initial form data for the visit form component
+    visit.initialFormData = {
       visitDate: new Date(visit.visitDate),
       visitType: visit.visitType,
       notes: visit.notes || "",
-      isReminderEnabled: Boolean(visit.isReminderEnabled),
+      isReminderEnabled: visit.isReminderEnabled,
       nextReminderDate: visit.nextReminderDate
         ? new Date(visit.nextReminderDate)
         : undefined,
+      price: visit.price,
+      // Include vital signs
+      weight: visit.weight,
+      weightUnit: visit.weightUnit as "kg" | "lb" | undefined,
+      temperature: visit.temperature,
+      heartRate: visit.heartRate,
+      respiratoryRate: visit.respiratoryRate,
+      bloodPressure: visit.bloodPressure,
+      spo2: visit.spo2,
+      crt: visit.crt,
+      mmColor: visit.mmColor,
+      painScore: visit.painScore,
     };
-
-    console.log("Edit initialFormData:", initialFormData);
-
-    setEditingVisit({
-      ...visit,
-      initialFormData,
-    } as Visit & { initialFormData: VisitFormValues });
-
-    setIsEditDialogOpen(true);
   };
 
   const handleUpdateVisit = (formData: VisitFormValues) => {
@@ -423,6 +441,7 @@ export default function PetVisitsPage() {
                   <TableHead className="font-medium w-36">Date</TableHead>
                   <TableHead className="font-medium w-28">Type</TableHead>
                   <TableHead className="font-medium w-28">Price</TableHead>
+                  <TableHead className="font-medium w-28">Weight</TableHead>
                   <TableHead className="font-medium w-36">Next Visit</TableHead>
                   <TableHead className="font-medium w-28">Reminder</TableHead>
                   <TableHead className="font-medium">Notes</TableHead>
@@ -437,7 +456,7 @@ export default function PetVisitsPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {formatDate(visit.visitDate)}
+                        {formatDateForDisplay(visit.visitDate)}
                       </div>
                     </TableCell>
                     <TableCell className="">
@@ -448,11 +467,16 @@ export default function PetVisitsPage() {
                         {visit.visitType}
                       </Badge>
                     </TableCell>
-                    <TableCell className="">
+                    <TableCell className="text-muted-foreground">
                       {formatCurrency(visit.price)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatDate(visit.nextReminderDate)}
+                      {visit.weight
+                        ? `${visit.weight} ${visit.weightUnit || "kg"}`
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateForDisplay(visit.nextReminderDate)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       <Badge
@@ -563,7 +587,7 @@ export default function PetVisitsPage() {
               <span className="font-medium">
                 {deletingVisit?.visitType} visit
               </span>{" "}
-              from {formatDate(deletingVisit?.visitDate)}.
+              from {formatDateForDisplay(deletingVisit?.visitDate)}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

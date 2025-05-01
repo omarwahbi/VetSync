@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, ControllerRenderProps } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,6 +42,17 @@ const visitSchema = z
     isReminderEnabled: z.boolean(),
     nextReminderDate: z.date().optional(),
     price: z.number().positive().max(999999.99).optional().nullable(),
+    // Vital signs fields
+    temperature: z.number().min(0).max(50).optional().nullable(),
+    weight: z.number().min(0).optional().nullable(),
+    weightUnit: z.enum(["kg", "lb"]).optional(),
+    heartRate: z.number().int().min(0).optional().nullable(),
+    respiratoryRate: z.number().int().min(0).optional().nullable(),
+    bloodPressure: z.string().optional().nullable(),
+    spo2: z.number().min(0).max(100).optional().nullable(),
+    crt: z.string().optional().nullable(),
+    mmColor: z.string().optional().nullable(),
+    painScore: z.number().min(0).max(10).optional().nullable(),
   })
   .refine(
     (data) => {
@@ -83,6 +94,7 @@ export interface VisitFormData extends VisitFormValues {
 
 interface VisitFormProps {
   initialData?: VisitFormData;
+  quickAdd?: boolean;
   onSubmit: (data: VisitFormValues) => void;
   onClose: () => void;
   isLoading?: boolean;
@@ -102,7 +114,11 @@ export function VisitForm({
   isLoading = false,
   selectedPetData,
   hideButtons = false,
+  quickAdd = false,
 }: VisitFormProps) {
+  // Add state for showing all vital signs
+  const [showAllVitals, setShowAllVitals] = useState(false);
+
   // Log what we receive as initialData
   console.log("VisitForm received initialData:", initialData);
   console.log("VisitForm received selectedPetData:", selectedPetData);
@@ -139,6 +155,16 @@ export function VisitForm({
         isReminderEnabled: initialData.isReminderEnabled,
         nextReminderDate: initialData.nextReminderDate,
         price: initialData.price !== undefined ? initialData.price : null,
+        temperature: initialData.temperature ?? null,
+        weight: initialData.weight ?? null,
+        weightUnit: initialData.weightUnit || "kg",
+        heartRate: initialData.heartRate ?? null,
+        respiratoryRate: initialData.respiratoryRate ?? null,
+        bloodPressure: initialData.bloodPressure ?? null,
+        spo2: initialData.spo2 ?? null,
+        crt: initialData.crt ?? null,
+        mmColor: initialData.mmColor ?? null,
+        painScore: initialData.painScore ?? null,
       }
     : {};
 
@@ -167,6 +193,17 @@ export function VisitForm({
               ? parseFloat(formFields.price)
               : formFields.price
             : null,
+        // Handle vital signs fields
+        temperature: formFields.temperature ?? null,
+        weight: formFields.weight ?? null,
+        weightUnit: formFields.weightUnit || "kg",
+        heartRate: formFields.heartRate ?? null,
+        respiratoryRate: formFields.respiratoryRate ?? null,
+        bloodPressure: formFields.bloodPressure ?? null,
+        spo2: formFields.spo2 ?? null,
+        crt: formFields.crt ?? null,
+        mmColor: formFields.mmColor ?? null,
+        painScore: formFields.painScore ?? null,
       }
     : {
         // Defaults for a NEW form
@@ -176,6 +213,17 @@ export function VisitForm({
         isReminderEnabled: remindersAllowed, // Set based on both clinic and owner preferences
         nextReminderDate: undefined,
         price: null,
+        // Default vital signs
+        temperature: null,
+        weight: null,
+        weightUnit: "kg",
+        heartRate: null,
+        respiratoryRate: null,
+        bloodPressure: null,
+        spo2: null,
+        crt: null,
+        mmColor: null,
+        painScore: null,
       };
   // Add a log to verify right before passing to useForm
   console.log("Default values for form:", defaultValuesForForm);
@@ -213,10 +261,16 @@ export function VisitForm({
         ? visitData.nextReminderDate
         : undefined;
 
+    // Ensure weightUnit is set if weight is provided
+    const weightUnit = visitData.weight
+      ? visitData.weightUnit || "kg"
+      : undefined;
+
     const submissionData = {
       ...visitData,
       visitDate,
       nextReminderDate,
+      weightUnit,
     };
     onSubmit(submissionData);
   };
@@ -362,6 +416,334 @@ export function VisitForm({
           )}
         />
 
+        <div className="space-y-4 border-t pt-4 mt-4">
+          <div className="flex justify-between items-center">
+            <h4 className="font-medium">Vital Signs</h4>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAllVitals(!showAllVitals)}
+            >
+              {showAllVitals ? "Show Less" : "Show More"}
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Weight with Weight Unit - Always visible */}
+            <div className="flex gap-2">
+              <FormField
+                control={form.control}
+                name="weight"
+                render={({
+                  field,
+                }: {
+                  field: ControllerRenderProps<VisitFormValues, "weight">;
+                }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>Weight</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        placeholder="5.5"
+                        {...field}
+                        value={field.value !== null ? field.value : ""}
+                        onChange={(e) => {
+                          const value = e.target.value
+                            ? parseFloat(e.target.value)
+                            : null;
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="weightUnit"
+                render={({
+                  field,
+                }: {
+                  field: ControllerRenderProps<VisitFormValues, "weightUnit">;
+                }) => (
+                  <FormItem className="w-24">
+                    <FormLabel>Unit</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="">
+                          <SelectValue placeholder="kg" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="">
+                        <SelectItem value="kg" className="">
+                          kg
+                        </SelectItem>
+                        <SelectItem value="lb" className="">
+                          lb
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Heart Rate - Always visible */}
+            <FormField
+              control={form.control}
+              name="heartRate"
+              render={({
+                field,
+              }: {
+                field: ControllerRenderProps<VisitFormValues, "heartRate">;
+              }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>HR (bpm)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="120"
+                      {...field}
+                      value={field.value !== null ? field.value : ""}
+                      onChange={(e) => {
+                        const value = e.target.value
+                          ? parseInt(e.target.value)
+                          : null;
+                        field.onChange(value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Only show these fields when showAllVitals is true */}
+            {showAllVitals && (
+              <>
+                <div className="col-span-1 md:col-span-2 border-t border-gray-200 dark:border-gray-700 my-2 pt-2">
+                  <span className="text-sm text-muted-foreground">
+                    Additional Vital Signs
+                  </span>
+                </div>
+
+                {/* Temperature */}
+                <FormField
+                  control={form.control}
+                  name="temperature"
+                  render={({
+                    field,
+                  }: {
+                    field: ControllerRenderProps<
+                      VisitFormValues,
+                      "temperature"
+                    >;
+                  }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Temp (°C)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          placeholder="38.5"
+                          {...field}
+                          value={field.value !== null ? field.value : ""}
+                          onChange={(e) => {
+                            const value = e.target.value
+                              ? parseFloat(e.target.value)
+                              : null;
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Respiratory Rate */}
+                <FormField
+                  control={form.control}
+                  name="respiratoryRate"
+                  render={({
+                    field,
+                  }: {
+                    field: ControllerRenderProps<
+                      VisitFormValues,
+                      "respiratoryRate"
+                    >;
+                  }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>RR (bpm)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="24"
+                          {...field}
+                          value={field.value !== null ? field.value : ""}
+                          onChange={(e) => {
+                            const value = e.target.value
+                              ? parseInt(e.target.value)
+                              : null;
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* SpO2 */}
+                <FormField
+                  control={form.control}
+                  name="spo2"
+                  render={({
+                    field,
+                  }: {
+                    field: ControllerRenderProps<VisitFormValues, "spo2">;
+                  }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>SpO2 (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="98"
+                          {...field}
+                          value={field.value !== null ? field.value : ""}
+                          onChange={(e) => {
+                            const value = e.target.value
+                              ? parseInt(e.target.value)
+                              : null;
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* CRT */}
+                <FormField
+                  control={form.control}
+                  name="crt"
+                  render={({
+                    field,
+                  }: {
+                    field: ControllerRenderProps<VisitFormValues, "crt">;
+                  }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>CRT (sec)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="< 2"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Blood Pressure */}
+                <FormField
+                  control={form.control}
+                  name="bloodPressure"
+                  render={({
+                    field,
+                  }: {
+                    field: ControllerRenderProps<
+                      VisitFormValues,
+                      "bloodPressure"
+                    >;
+                  }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>BP (mmHg)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="120/80"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* MM Color */}
+                <FormField
+                  control={form.control}
+                  name="mmColor"
+                  render={({
+                    field,
+                  }: {
+                    field: ControllerRenderProps<VisitFormValues, "mmColor">;
+                  }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>MM Color</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="Pink"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Pain Score */}
+                <FormField
+                  control={form.control}
+                  name="painScore"
+                  render={({
+                    field,
+                  }: {
+                    field: ControllerRenderProps<VisitFormValues, "painScore">;
+                  }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Pain Score (0-10)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="10"
+                          placeholder="0"
+                          {...field}
+                          value={field.value !== null ? field.value : ""}
+                          onChange={(e) => {
+                            const value = e.target.value
+                              ? parseInt(e.target.value)
+                              : null;
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-4">
           <div>
             <FormLabel className="">Reminder Settings</FormLabel>
@@ -500,7 +882,7 @@ export function VisitForm({
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {initialData ? "Update Visit" : "Add Visit"}
+              {initialData && !quickAdd ? "Update Visit" : "Add Visit"}
             </Button>
           </div>
         )}

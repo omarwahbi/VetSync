@@ -83,4 +83,48 @@ export class VisitsGlobalController {
   ) {
     return this.visitsService.findAllClinicVisits(req.user, filterDto);
   }
+  
+  @Get('due-today')
+  findVisitsDueToday(
+    @Request() req: { user: any },
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.visitsService.findVisitsDueToday(
+      req.user,
+      page ? +page : undefined,
+      limit ? +limit : undefined,
+    );
+  }
+
+  @Get('debug-dates')
+  async debugDates() {
+    // Get the current date in various formats for comparison
+    const now = new Date();
+    const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Use the service to get the debug data
+    const visits = await this.visitsService.getDebugDateInfo();
+    
+    // Additional useful date information for debugging
+    const debugInfo = {
+      currentServerTime: now.toISOString(),
+      todayDateOnly: today,
+      todayStart: `${today}T00:00:00.000Z`,
+      todayEnd: `${today}T23:59:59.999Z`,
+      visits: visits.map(v => ({
+        id: v.id,
+        visitType: v.visitType,
+        petId: v.petId,
+        petName: v.pet?.name,
+        clinicId: v.pet?.owner?.clinicId,
+        nextReminderDate: v.nextReminderDate?.toISOString(),
+        isToday: v.nextReminderDate
+          ? v.nextReminderDate.toISOString().startsWith(today)
+          : false,
+      })),
+    };
+    
+    return debugInfo;
+  }
 }

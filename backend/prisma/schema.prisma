@@ -27,11 +27,15 @@ model Clinic {
   currentCycleStartDate DateTime? // Timestamp when the current usage cycle began
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  updatedById           String?
+  updatedBy             User?     @relation("UpdatedClinics", fields: [updatedById], references: [id], onDelete: SetNull)
 
   // Relation: A clinic can have many users
   users  User[]
   // Relation: A clinic can have many owners
   owners Owner[]
+
+  @@index([updatedById])
 }
 
 model User {
@@ -53,6 +57,15 @@ model User {
   // Relation: A user can have many sessions
   sessions UserSession[]
 
+  // Audit trail relations
+  createdOwners  Owner[]  @relation("CreatedOwners")
+  updatedOwners  Owner[]  @relation("UpdatedOwners")
+  createdPets    Pet[]    @relation("CreatedPets")
+  updatedPets    Pet[]    @relation("UpdatedPets")
+  createdVisits  Visit[]  @relation("CreatedVisits")
+  updatedVisits  Visit[]  @relation("UpdatedVisits")
+  updatedClinics Clinic[] @relation("UpdatedClinics")
+
   @@index([clinicId]) // Index for faster lookups by clinic
 }
 
@@ -66,12 +79,16 @@ model Owner {
   id                      String   @id @default(cuid())
   firstName               String
   lastName                String
-  phone                   String
+  phone                   String? // Changed to optional
   email                   String?
   address                 String?  @db.Text // Optional address field
   allowAutomatedReminders Boolean  @default(true)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+  createdById             String?
+  createdBy               User?    @relation("CreatedOwners", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById             String?
+  updatedBy               User?    @relation("UpdatedOwners", fields: [updatedById], references: [id], onDelete: SetNull)
 
   // Relation: Each owner belongs to exactly one clinic
   clinicId String
@@ -80,20 +97,27 @@ model Owner {
   // Relation: An owner can have many pets
   pets Pet[]
 
+  @@unique([clinicId, phone]) // Add compound unique constraint for phone number per clinic
   @@index([clinicId]) // Index for faster lookups by clinic
+  @@index([createdById])
+  @@index([updatedById])
 }
 
 model Pet {
-  id        String    @id @default(cuid())
-  name      String
-  species   String?
-  breed     String?
-  dob       DateTime?
-  gender    String?
-  color     String?
-  notes     String?   @db.Text
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  species     String?
+  breed       String?
+  dob         DateTime?
+  gender      String?
+  color       String?
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  createdBy   User?     @relation("CreatedPets", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   User?     @relation("UpdatedPets", fields: [updatedById], references: [id], onDelete: SetNull)
 
   // Relation: Each pet belongs to exactly one owner
   ownerId String
@@ -103,6 +127,8 @@ model Pet {
   visits Visit[]
 
   @@index([ownerId]) // Index for faster lookups by owner
+  @@index([createdById])
+  @@index([updatedById])
 }
 
 model Visit {
@@ -114,8 +140,17 @@ model Visit {
   nextReminderDate  DateTime?
   reminderSent      Boolean   @default(false)
   isReminderEnabled Boolean   @default(true)
+  temperature       Float? // degrees C or F
+  weight            Float? // e.g., kg or lbs
+  weightUnit        String?   @default("kg") // Store unit explicitly
+  heartRate         Int? // Beats per minute (BPM)
+  respiratoryRate   Int? // Breaths per minute (BPM)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  createdById       String?
+  createdBy         User?     @relation("CreatedVisits", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById       String?
+  updatedBy         User?     @relation("UpdatedVisits", fields: [updatedById], references: [id], onDelete: SetNull)
 
   // Relation: Each visit belongs to exactly one pet
   petId String
@@ -123,6 +158,8 @@ model Visit {
 
   @@index([petId]) // Index for faster lookups by pet
   @@index([nextReminderDate]) // Index for efficient querying of reminders
+  @@index([createdById])
+  @@index([updatedById])
 }
 
 model UserSession {

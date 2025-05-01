@@ -2,17 +2,20 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateClinicDto } from './dto/create-clinic.dto';
 import { AdminClinicListQueryDto } from './dto/admin-clinic-list-query.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 
 @Injectable()
 export class ClinicsService {
   constructor(private prisma: PrismaService) {}
 
   // New method to create a clinic
-  async createClinic(createDto: CreateClinicDto) {
+  async createClinic(createDto: CreateClinicDto, user: User) {
     try {
       return await this.prisma.clinic.create({
-        data: createDto,
+        data: {
+          ...createDto,
+          updatedById: user.id,
+        },
       });
     } catch (error: any) {
       // Handle unique constraint violation (if clinic name is unique)
@@ -68,6 +71,13 @@ export class ClinicsService {
         currentCycleStartDate: true,
         createdAt: true,
         updatedAt: true,
+        updatedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
         _count: {
           select: {
             users: true,
@@ -121,6 +131,13 @@ export class ClinicsService {
       return await this.prisma.clinic.findUniqueOrThrow({
         where: { id: clinicId },
         include: {
+          updatedBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
           _count: {
             select: {
               users: true,
@@ -134,7 +151,7 @@ export class ClinicsService {
     }
   }
 
-  async updateClinicSettings(clinicId: string, updateDto: any) {
+  async updateClinicSettings(clinicId: string, updateDto: any, user: User) {
     try {
       // First check if the clinic exists
       await this.findClinicById(clinicId);
@@ -147,6 +164,9 @@ export class ClinicsService {
         data.reminderSentThisCycle = 0;
         data.currentCycleStartDate = new Date(updateDto.subscriptionStartDate);
       }
+      
+      // Add updatedById to track who made the change
+      data.updatedById = user.id;
       
       // Then update the clinic with the provided data
       return this.prisma.clinic.update({

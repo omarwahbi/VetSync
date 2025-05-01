@@ -110,28 +110,28 @@ export class ReminderService {
     this.logger.log(`Reminder cycle reset check complete. Reset counters for ${resetCount} clinics.`);
   }
 
-  // Run once every day at 1 pm
+  // Run once every day at 1 pm to check for visits in the next 24 hours
   @Cron('0 13 * * *')
   async handleScheduledReminders() {
-    this.logger.log('Running scheduled reminder check...');
+    this.logger.log('Running scheduled reminder check for visits in the next 24 hours...');
     try {
       // Get current time reference point using UTC internally
       const now = new Date();
 
-      // Calculate date range for reminders (visits due within the next 2 days)
+      // Calculate date range for reminders (visits due within the next 24 hours)
       // Start with today's date in UTC (midnight)
       const todayUtc = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
       );
       
-      // End date is end of day 2 days from now
-      const twoDaysLaterUtc = new Date(todayUtc);
-      twoDaysLaterUtc.setUTCDate(twoDaysLaterUtc.getUTCDate() + 2);
-      twoDaysLaterUtc.setUTCHours(23, 59, 59, 999); // End of the day 2 days from now
+      // End date is end of day tomorrow (24 hours from now)
+      const tomorrowUtc = new Date(todayUtc);
+      tomorrowUtc.setUTCDate(tomorrowUtc.getUTCDate() + 1);
+      tomorrowUtc.setUTCHours(23, 59, 59, 999); // End of tomorrow
       
       // Add logging to verify the calculated range
       this.logger.log(
-        `Reminder Query UTC Range: Start=${todayUtc.toISOString()}, End=${twoDaysLaterUtc.toISOString()}`,
+        `Reminder Query UTC Range: Start=${todayUtc.toISOString()}, End=${tomorrowUtc.toISOString()}`,
       );
       
       // Query visits that need reminders
@@ -141,7 +141,7 @@ export class ReminderService {
           isReminderEnabled: true,
           nextReminderDate: {
             gte: todayUtc,
-            lte: twoDaysLaterUtc,
+            lte: tomorrowUtc,
           },
           pet: {
             owner: {

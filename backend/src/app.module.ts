@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -19,6 +21,17 @@ import { ClinicUsersModule } from './clinic-users/clinic-users.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          // Default global limit
+          ttl: configService.get<number>('THROTTLE_TTL', 60000), // Milliseconds (e.g., 60 seconds)
+          limit: configService.get<number>('THROTTLE_LIMIT', 100), // Requests per TTL per IP
+        },
+      ],
+    }),
     ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
@@ -34,6 +47,12 @@ import { ClinicUsersModule } from './clinic-users/clinic-users.module';
     ClinicUsersModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

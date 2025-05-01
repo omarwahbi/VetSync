@@ -24,6 +24,7 @@ import { Response, Request as ExpressRequest } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -38,6 +39,7 @@ export class AuthController {
 
   @PublicRoute()
   @UseGuards(AuthGuard('local'))
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
   @Post('login')
   async login(
     @Req() req,
@@ -57,6 +59,7 @@ export class AuthController {
   }
 
   @PublicRoute()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 attempts per minute
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refreshToken(
@@ -246,6 +249,7 @@ export class AuthController {
   }
 
   @PublicRoute()
+  @Throttle({ default: { limit: 3, ttl: 300000 } }) // 3 attempts per 5 minutes
   @Post('register')
   async register(@Body() registerDto: RegisterDto): Promise<Omit<User, 'password'>> {
     this.logger.log(`Registration attempt for: ${registerDto.email}`);
@@ -253,6 +257,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 300000 } }) // 5 attempts per 5 minutes
   @Patch('change-password')
   async changePassword(
     @Req() req,
