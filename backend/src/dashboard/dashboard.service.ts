@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { getClinicDateRange, getClinicFutureDateRange } from './date-utils';
+import { createDueTodayWhereClause } from './dashboard-utils';
 
 @Injectable()
 export class DashboardService {
@@ -26,6 +28,16 @@ export class DashboardService {
     }
 
     const clinicId = user.clinicId;
+    
+    // Get the clinic's timezone
+    const clinic = await this.prisma.clinic.findUnique({
+      where: { id: clinicId },
+      select: { timezone: true },
+    });
+    
+    // Use the clinic's timezone or default to UTC
+    const timezone = clinic?.timezone || 'UTC';
+    this.logger.debug(`Using timezone: ${timezone} for clinic ${clinicId}`);
 
     // Get the count of owners in the clinic
     const ownerCount = await this.prisma.owner.count({
@@ -41,10 +53,11 @@ export class DashboardService {
       },
     });
 
-    // Define the time window for upcoming vaccinations (next 30 days)
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 30);
+    // Define the time window for upcoming vaccinations using clinic timezone
+    const { start: startDate, end: endDate } = getClinicFutureDateRange(30, timezone);
+    this.logger.debug(
+      `Clinic timezone (${timezone}) upcoming window: ${startDate.toISOString()} to ${endDate.toISOString()}`,
+    );
     
     // Get the count of upcoming vaccination visits
     const upcomingVaccinationCount = await this.prisma.visit.count({
@@ -62,51 +75,18 @@ export class DashboardService {
       },
     });
 
-    // Calculate date range for today using UTC to avoid timezone issues
-    const now = new Date();
-    const startOfUTCToday = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate(),
-        0,
-        0,
-        0,
-        0,
-      ),
-    );
-    const endOfUTCToday = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate(),
-        23,
-        59,
-        59,
-        999,
-      ),
-    );
+    // Get today's date range for the clinic's timezone
+    const dueTodayWhereClause = createDueTodayWhereClause(clinicId, timezone);
     
-    // Log these UTC dates for debugging if needed
+    // Log date boundaries for debugging
+    const { start, end } = getClinicDateRange(timezone);
     this.logger.debug(
-      `UTC Today boundaries: ${startOfUTCToday.toISOString()} to ${endOfUTCToday.toISOString()}`,
+      `Clinic (${timezone}) Today boundaries: ${start.toISOString()} to ${end.toISOString()}`,
     );
     
-    // Get the count of reminders due today using UTC day boundaries
+    // Get the count of reminders due today using the common where clause
     const dueTodayCount = await this.prisma.visit.count({
-      where: {
-        pet: {
-          owner: {
-            clinicId,
-          },
-        },
-        nextReminderDate: {
-          gte: startOfUTCToday,
-          lte: endOfUTCToday,
-        },
-        // Only count reminders that are enabled
-        isReminderEnabled: true,
-      },
+      where: dueTodayWhereClause
     });
 
     // Return the statistics

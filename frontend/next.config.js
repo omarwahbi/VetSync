@@ -1,7 +1,7 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
 
-const nextConfig: NextConfig = {
-  /* config options here */
   async rewrites() {
     return [
       {
@@ -17,11 +17,18 @@ const nextConfig: NextConfig = {
       }
     ];
   },
-  // This is handled in the package.json scripts, but adding here for clarity
-  // The actual port config will come from the start command
-  
+
   // Enable standalone output for Docker production deployment
   output: 'standalone',
+
+  // Add favicon configuration
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ['@svgr/webpack'],
+    });
+    return config;
+  },
 };
 
-export default nextConfig;
+module.exports = nextConfig; 

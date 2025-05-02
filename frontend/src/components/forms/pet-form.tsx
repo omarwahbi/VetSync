@@ -15,6 +15,7 @@ import {
   FileText,
   Save,
   X,
+  Bird,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -53,18 +54,23 @@ interface Owner {
   phone: string;
 }
 
-// Define validation schema
-const petSchema = z.object({
-  name: z.string().min(1, { message: "Pet name is required" }),
-  species: z.string().min(1, { message: "Species is required" }),
-  breed: z.string().optional(),
-  birthDate: z.date().optional().nullable(),
-  gender: z.string().optional(),
-  ownerId: z.string().optional(), // Make ownerId optional since it might be passed via props
-  notes: z.string().optional(),
-});
+// Define validation schema creator with hard-coded English strings
+const createPetSchema = (errorMessages: Record<string, string>) =>
+  z.object({
+    name: z.string().min(1, {
+      message: errorMessages.nameRequired || "Pet name is required",
+    }),
+    species: z.string().min(1, {
+      message: errorMessages.speciesRequired || "Species is required",
+    }),
+    breed: z.string().optional(),
+    birthDate: z.date().optional().nullable(),
+    gender: z.string().optional(),
+    ownerId: z.string().optional(), // Make ownerId optional since it might be passed via props
+    notes: z.string().optional(),
+  });
 
-export type PetFormValues = z.infer<typeof petSchema>;
+export type PetFormValues = z.infer<ReturnType<typeof createPetSchema>>;
 
 interface PetFormProps {
   initialData?: Partial<PetFormValues>;
@@ -76,20 +82,6 @@ interface PetFormProps {
   hideButtons?: boolean; // Optional prop to hide form buttons when used in wizard
 }
 
-const genderOptions = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "unknown", label: "Unknown" },
-];
-
-const speciesOptions = [
-  { value: "dog", label: "Dog" },
-  { value: "cat", label: "Cat" },
-  { value: "bird", label: "Bird" },
-  { value: "rabbit", label: "Rabbit" },
-  { value: "other", label: "Other" },
-];
-
 export function PetForm({
   initialData,
   onSubmit,
@@ -100,6 +92,26 @@ export function PetForm({
   hideButtons = false,
 }: PetFormProps) {
   const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
+
+  // Create gender and species options with hardcoded English strings
+  const genderOptions = [
+    { value: "male", label: "Male", icon: Users },
+    { value: "female", label: "Female", icon: Users },
+    { value: "unknown", label: "Unknown", icon: Users },
+  ];
+
+  const speciesOptions = [
+    { value: "dog", label: "Dog", icon: Dog },
+    { value: "cat", label: "Cat", icon: Cat },
+    { value: "bird", label: "Bird", icon: Bird },
+    { value: "other", label: "Other", icon: FileText },
+  ];
+
+  // Create validation schema with English error messages
+  const petSchema = createPetSchema({
+    nameRequired: "Pet name is required",
+    speciesRequired: "Species is required",
+  });
 
   const form = useForm<PetFormValues>({
     resolver: zodResolver(petSchema),
@@ -163,9 +175,9 @@ export function PetForm({
                   </FormControl>
                   <SelectContent className="w-full">
                     <div className="flex items-center border-b px-3 py-2">
-                      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                      <Search className="me-2 h-4 w-4 shrink-0 opacity-50" />
                       <input
-                        placeholder="Search owners..."
+                        placeholder="Search for an owner"
                         className="flex h-8 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                         value={ownerSearchQuery}
                         onChange={(e) => setOwnerSearchQuery(e.target.value)}
@@ -207,13 +219,13 @@ export function PetForm({
             <FormItem className="w-full">
               <FormLabel className="flex items-center gap-1">
                 <Cat className="h-4 w-4" />
-                Pet&apos;s name <span className="text-red-500">*</span>
+                Pet Name <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl className="w-full">
                 <Input
                   type="text"
                   className="w-full"
-                  placeholder="Pet's name"
+                  placeholder="Enter pet name"
                   {...field}
                 />
               </FormControl>
@@ -241,13 +253,14 @@ export function PetForm({
                     <SelectValue placeholder="Select species" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent className="max-h-[200px]">
+                <SelectContent className="w-full">
                   {speciesOptions.map((option) => (
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className="py-2"
+                      className="flex items-center gap-2"
                     >
+                      <option.icon className="h-4 w-4" />
                       {option.label}
                     </SelectItem>
                   ))}
@@ -268,66 +281,18 @@ export function PetForm({
           }) => (
             <FormItem className="w-full">
               <FormLabel className="flex items-center gap-1">
-                <Cat className="h-4 w-4" />
+                <Dog className="h-4 w-4" />
                 Breed
               </FormLabel>
               <FormControl className="w-full">
                 <Input
                   type="text"
                   className="w-full"
-                  placeholder="Breed"
+                  placeholder="Enter breed"
                   {...field}
+                  value={field.value || ""}
                 />
               </FormControl>
-              <FormMessage className="w-full" />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="birthDate"
-          render={({
-            field,
-          }: {
-            field: ControllerRenderProps<PetFormValues, "birthDate">;
-          }) => (
-            <FormItem className="w-full">
-              <FormLabel className="flex items-center gap-1">
-                <CalendarIcon className="h-4 w-4" />
-                Birth Date
-              </FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl className="w-full">
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "pl-3 text-left font-normal w-full",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(new Date(field.value), "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value ? new Date(field.value) : undefined}
-                    onSelect={field.onChange}
-                    disabled={(date) =>
-                      date > new Date() || date < new Date("1900-01-01")
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
               <FormMessage className="w-full" />
             </FormItem>
           )}
@@ -347,24 +312,74 @@ export function PetForm({
                 Gender
               </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl className="w-full">
+                <FormControl>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent className="max-h-[200px]">
+                <SelectContent className="w-full">
                   {genderOptions.map((option) => (
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className="py-2"
+                      className="flex items-center gap-2"
                     >
+                      <option.icon className="h-4 w-4" />
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <FormMessage className="w-full" />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="birthDate"
+          render={({
+            field,
+          }: {
+            field: ControllerRenderProps<PetFormValues, "birthDate">;
+          }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel className="flex items-center gap-1">
+                <CalendarIcon className="h-4 w-4" />
+                Date of Birth
+              </FormLabel>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value ? (
+                        format(field.value, "MMMM d, yyyy")
+                      ) : (
+                        <span>Select date</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={field.value ?? undefined}
+                    onSelect={field.onChange}
+                    disabled={(date) =>
+                      date > new Date() || date < new Date("1900-01-01")
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -384,8 +399,8 @@ export function PetForm({
               </FormLabel>
               <FormControl className="w-full">
                 <Textarea
-                  placeholder="Any additional notes"
-                  className="resize-none"
+                  placeholder="Additional information about the pet"
+                  className="resize-none min-h-[80px]"
                   {...field}
                 />
               </FormControl>
@@ -401,22 +416,22 @@ export function PetForm({
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
+              className="flex items-center gap-2"
             >
-              <X className="mr-2 h-4 w-4" />
+              <X className="h-4 w-4" />
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
               {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Pet
-                </>
+                <Save className="h-4 w-4" />
               )}
+              Save
             </Button>
           </div>
         )}

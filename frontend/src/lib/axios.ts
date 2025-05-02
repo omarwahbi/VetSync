@@ -44,7 +44,7 @@ axiosInstance.interceptors.response.use(
           console.log('No refresh token available or token expired');
           useAuthStore.getState().logout();
           
-          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
             console.log("Redirecting to login due to missing token.");
             window.location.href = '/login';
           }
@@ -64,7 +64,7 @@ axiosInstance.interceptors.response.use(
         console.log('Error refreshing token:', refreshError);
         useAuthStore.getState().logout();
         
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
           window.location.href = '/login';
         }
         

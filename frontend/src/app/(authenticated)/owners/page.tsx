@@ -126,15 +126,15 @@ export default function OwnersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Pet Owners</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Owners</h1>
         <p className="text-muted-foreground mt-2">
-          View and manage all registered pet owners
+          Manage your clients and their information
         </p>
       </div>
 
       <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl">Manage Owners</CardTitle>
+          <CardTitle className="text-xl">Client List</CardTitle>
           <div className="flex items-center gap-2">
             <OwnersColumnSelector
               columnsVisibility={columnsVisibility}
@@ -146,7 +146,7 @@ export default function OwnersPage() {
               onClick={() => setIsAddDialogOpen(true)}
             >
               <Plus className="h-4 w-4" />
-              New Owner
+              New Client
             </Button>
           </div>
         </CardHeader>
@@ -166,14 +166,14 @@ export default function OwnersPage() {
             <div className="py-8 text-center">
               <p className="text-red-500">
                 Error loading owners:{" "}
-                {(error as Error)?.message || "Unknown error"}
+                {(error as Error)?.message || "An unknown error occurred"}
               </p>
               <Button
                 variant="outline"
                 className="mt-4"
                 onClick={() => refetch()}
               >
-                <RefreshCcw className="mr-2 h-4 w-4" />
+                <RefreshCcw className="me-2 h-4 w-4" />
                 Retry
               </Button>
             </div>
@@ -191,7 +191,7 @@ export default function OwnersPage() {
               {meta && meta.totalPages > 0 && (
                 <div className="px-6 py-4 border-t">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 rtl:space-x-reverse">
                       <p className="text-sm font-medium">Rows per page</p>
                       <Select
                         value={`${limit}`}
@@ -245,30 +245,36 @@ export default function OwnersPage() {
       />
 
       {/* Edit Owner Dialog */}
-      <EditOwnerDialog
-        isOpen={isEditDialogOpen}
-        onClose={() => {
-          setIsEditDialogOpen(false);
-          setEditingOwner(null);
-        }}
-        owner={editingOwner}
-        onSubmit={handleUpdateOwner}
-        isLoading={isUpdatingOwner}
-      />
+      {editingOwner && (
+        <EditOwnerDialog
+          owner={editingOwner}
+          isOpen={isEditDialogOpen}
+          onClose={() => {
+            setIsEditDialogOpen(false);
+            setEditingOwner(null);
+          }}
+          onSubmit={handleUpdateOwner}
+          isLoading={isUpdatingOwner}
+        />
+      )}
 
       {/* Delete Owner Dialog */}
-      <DeleteOwnerDialog
-        owner={deletingOwner}
-        onClose={() => setDeletingOwner(null)}
-        onConfirm={confirmDeleteOwner}
-        isLoading={isDeletingOwner}
-      />
+      {deletingOwner && (
+        <DeleteOwnerDialog
+          owner={deletingOwner}
+          onClose={() => setDeletingOwner(null)}
+          onConfirm={confirmDeleteOwner}
+          isLoading={isDeletingOwner}
+        />
+      )}
 
       {/* New Client Wizard */}
-      <NewClientWizard
-        isOpen={isWizardOpen}
-        onClose={() => setIsWizardOpen(false)}
-      />
+      {isWizardOpen && (
+        <NewClientWizard
+          isOpen={isWizardOpen}
+          onClose={() => setIsWizardOpen(false)}
+        />
+      )}
     </div>
   );
 }

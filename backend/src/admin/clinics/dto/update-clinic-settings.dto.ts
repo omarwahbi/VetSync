@@ -17,6 +17,11 @@ export class UpdateClinicSettingsDto {
   @MaxLength(20)
   phone?: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  timezone?: string;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

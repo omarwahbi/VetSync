@@ -37,12 +37,12 @@ export function formatPhoneNumberForWhatsApp(
  * Standardized date formatting function for consistent display across the application.
  * Converts date strings to the user's local timezone and formats them for display.
  * @param dateString The date string to format (ISO 8601 format from API)
- * @param formatString The date-fns format string to use (defaults to 'PPP' - e.g., "April 29, 2023")
+ * @param formatString The date-fns format string to use (defaults to 'dd-MM-yyyy' - e.g., "29-04-2023")
  * @returns Formatted date string in user's local timezone or fallback value if invalid
  */
 export function formatDateForDisplay(
   dateString?: string | null,
-  formatString: string = "PPP"
+  formatString: string = "dd-MM-yyyy"
 ): string {
   if (!dateString) return "N/A";
   try {
@@ -65,8 +65,8 @@ export function formatDisplayDate(
   try {
     const date = new Date(dateInput);
     if (!isValid(date)) return "Invalid Date";
-    // 'P' format displays date like "04/29/2025"
-    return format(date, "P");
+    // Format displays date like "29-04-2023"
+    return format(date, "dd-MM-yyyy");
   } catch (error) {
     console.error("Error formatting date:", error);
     return "Invalid date";
@@ -85,8 +85,8 @@ export function formatDisplayDateTime(
   try {
     const date = new Date(dateInput);
     if (!isValid(date)) return "Invalid Date";
-    // 'Pp' format displays date and time like "04/29/2025, 5:00 PM"
-    return format(date, "Pp");
+    // Format displays date and time like "29-04-2023, 5:00 PM"
+    return format(date, "dd-MM-yyyy, h:mm a");
   } catch (error) {
     console.error("Error formatting date and time:", error);
     return "Invalid date";

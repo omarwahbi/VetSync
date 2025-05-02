@@ -7,6 +7,8 @@ import { UpdateVisitDto } from './dto/update-visit.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilterVisitDto } from './dto/filter-visit.dto';
 import { Prisma, User } from '@prisma/client';
+import { getUTCTodayRange, getClinicFutureDateRange, getClinicDateRange } from '../dashboard/date-utils';
+import { createDueTodayWhereClause } from '../dashboard/dashboard-utils';
 
 @Injectable()
 export class VisitsService {
@@ -192,46 +194,34 @@ export class VisitsService {
     const today = new Date();
     console.log('Current server time:', today.toISOString());
     
-    // Get the current date parts
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const day = today.getDate();
+    // Get the clinic's timezone if applicable
+    let timezone = 'UTC';
+    if (user.clinicId) {
+      const clinic = await this.prisma.clinic.findUnique({
+        where: { id: user.clinicId },
+        select: { timezone: true },
+      });
+      timezone = clinic?.timezone || 'UTC';
+    }
+    console.log(`Using timezone: ${timezone} for upcoming visits query`);
     
-    // Create start of day in UTC (midnight)
-    const todayStartUTC = new Date(Date.UTC(year, month, day));
+    // Get date range based on clinic's timezone
+    const { start: startDate, end: endDate } = getClinicFutureDateRange(30, timezone);
     
-    // Get date 30 days from now
-    const thirtyDaysLater = new Date(Date.UTC(year, month, day + 30, 23, 59, 59, 999));
-    
-    console.log('Upcoming date range - From:', todayStartUTC.toISOString(), 'To:', thirtyDaysLater.toISOString());
-    
-    // For debugging: Apply a 3-hour extension on both sides for more lenient matching
-    const extendedStartUTC = new Date(todayStartUTC);
-    extendedStartUTC.setUTCHours(todayStartUTC.getUTCHours() - 3);
-    
-    // For debugging: Query to check if ANY visits have nextReminderDate set
-    const anyVisitsWithReminders = await this.prisma.visit.findMany({
-      where: {},
-      select: { 
-        id: true, 
-        nextReminderDate: true,
-        visitType: true
-      },
-      take: 5
-    });
-    console.log('Sample visits with nextReminderDate:', JSON.stringify(anyVisitsWithReminders));
+    console.log('Upcoming date range using clinic timezone - From:', startDate.toISOString(), 'To:', endDate.toISOString());
     
     // For regular users, ensure clinicId is not null or undefined before using it
     if (!user.clinicId && user.role !== 'ADMIN') {
       throw new Error('Clinic ID is required for non-admin users');
     }
     
-    // Build the query
+    // Build the query with the proper date range
     let whereClause: Prisma.VisitWhereInput = {
       nextReminderDate: {
-        gte: extendedStartUTC,
-        lte: thirtyDaysLater,
-      }
+        gte: startDate, // Start from beginning of TODAY in clinic's timezone (converted to UTC)
+        lte: endDate,   // End at the end of the future date in clinic's timezone (converted to UTC)
+      },
+      isReminderEnabled: true, // Only include reminders that are enabled (consistent with other endpoints)
     };
     
     // Add clinic filter for non-admin users
@@ -443,78 +433,39 @@ export class VisitsService {
     const today = new Date();
     console.log('Current server time for due today:', today.toISOString());
     
-    // Get the current date parts
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const day = today.getDate();
+    // Get the clinic's timezone if applicable
+    let timezone = 'UTC';
+    if (user.clinicId) {
+      const clinic = await this.prisma.clinic.findUnique({
+        where: { id: user.clinicId },
+      });
+      timezone = clinic?.timezone || 'UTC';
+    }
+    console.log(`Using timezone: ${timezone} for due today query`);
     
-    // Create start of day in UTC (midnight)
-    const todayStartUTC = new Date(Date.UTC(year, month, day));
-    // Create end of day in UTC (23:59:59.999)
-    const todayEndUTC = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+    // Get today's date range in the clinic's timezone
+    const { start: todayStartUTC, end: todayEndUTC } = getClinicDateRange(timezone);
     
     // Debug information about the date ranges
-    console.log('Today Start UTC:', todayStartUTC.toISOString());
-    console.log('Today End UTC:', todayEndUTC.toISOString());
-    
-    // For more flexible debugging, extend the range by 3 hours on either side
-    // This helps catch dates that might be off by a few hours due to timezone conversion
-    const extendedStartUTC = new Date(todayStartUTC);
-    extendedStartUTC.setUTCHours(todayStartUTC.getUTCHours() - 3);
-    
-    const extendedEndUTC = new Date(todayEndUTC);
-    extendedEndUTC.setUTCHours(todayEndUTC.getUTCHours() + 3);
-    
-    console.log('Extended Today Start UTC (for debugging):', extendedStartUTC.toISOString());
-    console.log('Extended Today End UTC (for debugging):', extendedEndUTC.toISOString());
-    
-    // For debugging: Query to check if ANY visits have nextReminderDate matching today's date
-    // Uses the extended range for more lenient matching
-    const todayVisitsRaw = await this.prisma.visit.findMany({
-      where: {
-        nextReminderDate: {
-          gte: extendedStartUTC,
-          lte: extendedEndUTC
-        }
-      },
-      select: { 
-        id: true,
-        nextReminderDate: true,
-        visitType: true
-      }
-    });
-    console.log('All visits due today (extended range):', JSON.stringify(todayVisitsRaw));
+    console.log('Today Start (clinic timezone converted to UTC):', todayStartUTC.toISOString());
+    console.log('Today End (clinic timezone converted to UTC):', todayEndUTC.toISOString());
     
     // Apply pagination
     const skip = (page - 1) * limit;
     
-    // Build the where clause - using the extended range for more reliable results
-    let whereClause: Prisma.VisitWhereInput = {
-      nextReminderDate: {
-        gte: extendedStartUTC,
-        lte: extendedEndUTC
-      }
-    };
+    // Build the where clause based on user role and clinic using the shared utility
+    let whereClause: Prisma.VisitWhereInput;
     
     // For admin users without a clinicId, return visits from all clinics
-    // For regular users, filter by clinicId
-    if (user.role !== 'ADMIN' || user.clinicId) {
+    if (user.role === 'ADMIN' && !user.clinicId) {
+      whereClause = createDueTodayWhereClause(null, timezone);
+    } else {
       // For non-admin users, ensure clinicId exists
       if (user.role !== 'ADMIN' && !user.clinicId) {
         throw new Error('Clinic ID is required for non-admin users');
       }
       
-      // Only add clinicId filter if it exists
-      if (user.clinicId) {
-        whereClause = {
-          ...whereClause,
-          pet: {
-            owner: {
-              clinicId: user.clinicId
-            }
-          }
-        };
-      }
+      whereClause = createDueTodayWhereClause(user.clinicId, timezone);
     }
 
     // Log the query parameters for debugging
@@ -589,16 +540,6 @@ export class VisitsService {
       skip,
       take: limit,
     });
-    
-    // Log the first result for debugging
-    if (visits.length > 0) {
-      console.log('First visit due today:', JSON.stringify({
-        id: visits[0].id,
-        visitType: visits[0].visitType,
-        nextReminderDate: visits[0].nextReminderDate,
-        petName: visits[0].pet?.name
-      }));
-    }
     
     return {
       data: visits,

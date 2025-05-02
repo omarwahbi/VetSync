@@ -43,7 +43,40 @@ interface ErrorResponse {
   message: string;
 }
 
+// This is the main component that gets exported
 export default function LoginPage() {
+  // Use a safe mounting pattern to prevent hydration mismatches
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Only render the actual login component when the component has mounted on the client
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+        <Card className="w-full max-w-sm animate-pulse">
+          <CardHeader className="space-y-1">
+            <div className="h-6 bg-gray-200 rounded mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded"></div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="h-10 bg-gray-200 rounded mb-4"></div>
+            <div className="h-10 bg-gray-200 rounded mb-4"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Once mounted, render the full component
+  return <LoginForm />;
+}
+
+// This is the inner component
+function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
@@ -53,7 +86,7 @@ export default function LoginPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
 
-  // Initialize form - MOVED BEFORE CONDITIONAL RETURN
+  // Initialize form
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -64,8 +97,6 @@ export default function LoginPage() {
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
     if (!isLoading && isAuthenticated) {
       router.push("/dashboard");
     }
@@ -94,7 +125,7 @@ export default function LoginPage() {
       return true;
     } catch (error) {
       console.error("Error fetching user profile:", error);
-      toast.error("Failed to load user profile");
+      toast.error("An error occurred while retrieving your profile.");
       return false;
     }
   };
@@ -113,12 +144,12 @@ export default function LoginPage() {
       const profileSuccess = await fetchAndSetUser();
 
       if (profileSuccess) {
-        toast.success("Login successful");
+        toast.success("Login successful! Redirecting to dashboard...");
         router.push("/dashboard");
       } else {
         // If profile fetch fails, clear the token
         setAccessToken(null);
-        toast.error("Could not get user profile");
+        toast.error("An error occurred while signing in.");
       }
     } catch (error: unknown) {
       console.error("Login error:", error);
@@ -127,7 +158,7 @@ export default function LoginPage() {
       const axiosError = error as AxiosError<ErrorResponse>;
       const errorMessage =
         axiosError.response?.data?.message ||
-        "Failed to login. Please try again.";
+        "An error occurred while signing in.";
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -140,7 +171,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Vet Clinic Login
+            Sign In
           </CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access your account

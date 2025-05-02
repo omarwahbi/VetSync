@@ -29,7 +29,11 @@ export function DatePicker({ date, setDate }: DatePickerProps) {
             !isValidDate && "text-muted-foreground"
           )}
         >
-          {isValidDate ? format(date as Date, "PPP") : <span>Pick a date</span>}
+          {isValidDate ? (
+            format(date as Date, "dd-MM-yyyy")
+          ) : (
+            <span>Pick a date</span>
+          )}
           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>

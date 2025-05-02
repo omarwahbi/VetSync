@@ -41,6 +41,7 @@ interface Clinic {
   canSendReminders: boolean;
   address?: string;
   phone?: string;
+  timezone?: string;
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
   reminderMonthlyLimit?: number;
@@ -56,6 +57,7 @@ interface ClinicUpdateData {
   name?: string;
   address?: string;
   phone?: string;
+  timezone?: string;
   isActive?: boolean;
   canSendReminders?: boolean;
   subscriptionStartDate?: Date | null;
@@ -406,6 +408,7 @@ export default function AdminClinicsPage() {
                 <TableRow className="hover:bg-muted/50">
                   <TableHead className="font-medium">Name</TableHead>
                   <TableHead className="font-medium">Status</TableHead>
+                  <TableHead className="font-medium">Timezone</TableHead>
                   <TableHead className="font-medium">Reminder Limit</TableHead>
                   <TableHead className="font-medium">Sent This Cycle</TableHead>
                   <TableHead className="font-medium">
@@ -439,6 +442,9 @@ export default function AdminClinicsPage() {
                       >
                         {clinic.isActive ? "Active" : "Inactive"}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {clinic.timezone || "UTC"}
                     </TableCell>
                     <TableCell>
                       {!clinic.canSendReminders ? (
@@ -479,7 +485,7 @@ export default function AdminClinicsPage() {
                       {clinic.currentCycleStartDate
                         ? format(
                             new Date(clinic.currentCycleStartDate),
-                            "MMM d, yyyy"
+                            "dd-MM-yyyy"
                           )
                         : "N/A"}
                     </TableCell>
@@ -487,7 +493,7 @@ export default function AdminClinicsPage() {
                       {clinic.subscriptionStartDate
                         ? format(
                             new Date(clinic.subscriptionStartDate),
-                            "MMM d, yyyy"
+                            "dd-MM-yyyy"
                           )
                         : "N/A"}
                     </TableCell>
@@ -495,7 +501,7 @@ export default function AdminClinicsPage() {
                       {clinic.subscriptionEndDate
                         ? format(
                             new Date(clinic.subscriptionEndDate),
-                            "MMM d, yyyy"
+                            "dd-MM-yyyy"
                           )
                         : "N/A"}
                     </TableCell>

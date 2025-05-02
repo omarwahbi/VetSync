@@ -26,6 +26,7 @@ import { useState } from "react";
 import { NewClientWizard } from "@/components/wizards/new-client-wizard";
 import { QuickAddVisitModal } from "@/components/forms/quick-add-visit-modal";
 import { cn, formatDisplayDate } from "@/lib/utils";
+import Link from "next/link";
 
 // Simple Skeleton component for loading states
 const Skeleton = ({ className = "" }: { className?: string }) => (
@@ -111,19 +112,19 @@ export default function DashboardPage() {
 
   // Prepare display values for stats
   const ownerCountDisplay = isLoadingStats ? (
-    <LoadingSpinner size="sm" text="Loading owner count" />
+    <LoadingSpinner size="sm" text="Total Owners" />
   ) : (
     stats?.ownerCount ?? 0
   );
 
   const petCountDisplay = isLoadingStats ? (
-    <LoadingSpinner size="sm" text="Loading pet count" />
+    <LoadingSpinner size="sm" text="Total Pets" />
   ) : (
     stats?.petCount ?? 0
   );
 
   const upcomingVaccinationCountDisplay = isLoadingStats ? (
-    <LoadingSpinner size="sm" text="Loading vaccination count" />
+    <LoadingSpinner size="sm" text="Upcoming Vaccinations" />
   ) : (
     stats?.upcomingVaccinationCount ?? 0
   );
@@ -139,12 +140,12 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Dashboard Overview
+            Dashboard
           </h1>
           <p className="text-muted-foreground mt-2">
             {user
-              ? `Welcome, ${user.firstName || "User"}!`
-              : "Welcome to your dashboard!"}
+              ? `Welcome back, ${user.firstName || "User"}!`
+              : "Welcome to VetSync"}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -164,7 +165,7 @@ export default function DashboardPage() {
             onClick={() => setIsWizardOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Register New Client
+            Register Client
           </Button>
         </div>
       </div>
@@ -173,138 +174,153 @@ export default function DashboardPage() {
       {userRole !== "STAFF" && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {/* Visits Due Today Card */}
-          <Card className="bg-white dark:bg-card shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Visits Due Today
-              </CardTitle>
-              <CalendarCheck2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dueTodayCountDisplay}</div>
-              {isErrorStats && (
-                <p className="text-xs text-red-500">Error loading stats</p>
-              )}
-            </CardContent>
-          </Card>
+          <Link
+            href="/due-visits"
+            className="transition-transform hover:scale-105"
+          >
+            <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Visits Due Today
+                </CardTitle>
+                <CalendarCheck2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dueTodayCountDisplay}</div>
+                {isErrorStats && (
+                  <p className="text-xs text-red-500">Error loading stats</p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Owner Count Card */}
-          <Card className="bg-white dark:bg-card shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Owners
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{ownerCountDisplay}</div>
-              {isErrorStats && (
-                <p className="text-xs text-red-500">Error loading stats</p>
-              )}
-            </CardContent>
-          </Card>
+          <Link href="/owners" className="transition-transform hover:scale-105">
+            <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Owners
+                </CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{ownerCountDisplay}</div>
+                {isErrorStats && (
+                  <p className="text-xs text-red-500">Error loading stats</p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Pet Count Card */}
-          <Card className="bg-white dark:bg-card shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Pets</CardTitle>
-              <PawPrint className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{petCountDisplay}</div>
-              {isErrorStats && (
-                <p className="text-xs text-red-500">Error loading stats</p>
-              )}
-            </CardContent>
-          </Card>
+          <Link href="/pets" className="transition-transform hover:scale-105">
+            <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Pets
+                </CardTitle>
+                <PawPrint className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{petCountDisplay}</div>
+                {isErrorStats && (
+                  <p className="text-xs text-red-500">Error loading stats</p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Upcoming Vaccinations Card */}
-          <Card className="bg-white dark:bg-card shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Upcoming Vaccinations
-              </CardTitle>
-              <CalendarClock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {upcomingVaccinationCountDisplay}
-              </div>
-              {isErrorStats && (
-                <p className="text-xs text-red-500">Error loading stats</p>
-              )}
-            </CardContent>
-          </Card>
+          <Link
+            href="/visits?page=1&visitType=vaccination"
+            className="transition-transform hover:scale-105"
+          >
+            <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Upcoming Vaccinations
+                </CardTitle>
+                <CalendarClock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {upcomingVaccinationCountDisplay}
+                </div>
+                {isErrorStats && (
+                  <p className="text-xs text-red-500">Error loading stats</p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       )}
 
-      <Card className="bg-white dark:bg-card shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg">Upcoming Visits & Reminders</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="py-6 flex items-center justify-center">
-              <LoadingSpinner size="md" text="Loading upcoming visits" />
-            </div>
-          ) : isError ? (
-            <div className="py-6 text-center text-red-500">
-              Error loading upcoming visits
-            </div>
-          ) : upcomingVisits.length === 0 ? (
-            <div className="py-6 text-center text-muted-foreground">
-              No upcoming visits scheduled
-            </div>
-          ) : (
-            <div className="rounded-md border overflow-hidden">
-              <Table className="min-w-full border-collapse">
-                <TableHeader className="bg-muted/50">
+      {/* Upcoming Visits Section */}
+      <div className="grid gap-4">
+        <Card className="bg-white dark:bg-card shadow-sm">
+          <CardHeader>
+            <CardTitle>Upcoming Visits</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex justify-center p-4">
+                <LoadingSpinner size="md" text="Loading upcoming visits..." />
+              </div>
+            ) : isError ? (
+              <div className="p-4 text-center text-red-500">
+                Error loading visits
+              </div>
+            ) : upcomingVisits.length === 0 ? (
+              <div className="p-4 text-center text-muted-foreground">
+                No upcoming visits scheduled
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[180px]">Pet</TableHead>
-                    <TableHead className="w-[180px]">Owner</TableHead>
-                    <TableHead className="w-[120px]">Due Date</TableHead>
-                    <TableHead className="w-[120px]">Type</TableHead>
+                    <TableHead>Pet</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Type</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {upcomingVisits.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
-                        No upcoming visits found.
+                  {upcomingVisits.map((visit) => (
+                    <TableRow key={visit.id}>
+                      <TableCell>
+                        <Link
+                          href={`/pets/${visit.petId}`}
+                          className="text-primary hover:underline"
+                        >
+                          {visit.pet.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        {`${visit.pet.owner.firstName} ${visit.pet.owner.lastName}`}
+                      </TableCell>
+                      <TableCell>
+                        {formatDisplayDate(visit.nextReminderDate)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={cn(
+                            "font-normal text-xs",
+                            getVisitTypeBadgeColor(visit.visitType)
+                          )}
+                        >
+                          {visit.visitType}
+                        </Badge>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    upcomingVisits.map((visit) => (
-                      <TableRow key={visit.id}>
-                        <TableCell className="font-medium">
-                          {visit.pet.name}
-                        </TableCell>
-                        <TableCell>
-                          {visit.pet.owner.firstName} {visit.pet.owner.lastName}
-                        </TableCell>
-                        <TableCell>
-                          {formatDisplayDate(visit.nextReminderDate)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={cn(
-                              "capitalize",
-                              getVisitTypeBadgeColor(visit.visitType)
-                            )}
-                          >
-                            {visit.visitType.toLowerCase()}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* New Client Wizard Modal */}
       {isWizardOpen && (
         <NewClientWizard
           isOpen={isWizardOpen}
@@ -312,10 +328,13 @@ export default function DashboardPage() {
         />
       )}
 
-      <QuickAddVisitModal
-        isOpen={isVisitModalOpen}
-        onClose={() => setIsVisitModalOpen(false)}
-      />
+      {/* Quick Add Visit Modal */}
+      {isVisitModalOpen && (
+        <QuickAddVisitModal
+          isOpen={isVisitModalOpen}
+          onClose={() => setIsVisitModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

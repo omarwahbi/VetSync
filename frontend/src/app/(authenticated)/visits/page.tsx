@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "@/lib/axios";
@@ -72,14 +72,6 @@ import { SimplePagination } from "@/components/owners/SimplePagination";
 // Constants
 const PAGE_SIZES = [10, 20, 50, 100];
 const ITEMS_PER_PAGE = PAGE_SIZES[1]; // Default to 20
-const VISIT_TYPES = [
-  { value: "all", label: "All Types" },
-  { value: "checkup", label: "Checkup" },
-  { value: "vaccination", label: "Vaccination" },
-  { value: "surgery", label: "Surgery" },
-  { value: "emergency", label: "Emergency" },
-  { value: "dental", label: "Dental" },
-];
 
 // Interface for user who created/updated the visit
 interface User {
@@ -148,6 +140,19 @@ const fetchVisits = async ({
   visitType?: string;
   dateRange?: DateRange;
 }) => {
+  console.log("API Call: Fetching visits with filters:", {
+    pageParam,
+    limitParam,
+    searchTerm,
+    visitType,
+    dateRangeFrom: dateRange?.from
+      ? dateRange.from.toISOString().split("T")[0]
+      : null,
+    dateRangeTo: dateRange?.to
+      ? dateRange.to.toISOString().split("T")[0]
+      : null,
+  });
+
   const params: Record<string, string | number | undefined> = {
     page: pageParam,
     limit: limitParam,
@@ -166,10 +171,22 @@ const fetchVisits = async ({
     (key) => params[key] === undefined && delete params[key]
   );
 
-  const response = await axiosInstance.get<VisitsResponse>("/visits/all", {
-    params,
-  });
-  return response.data;
+  console.log("API Call: Params being sent to server:", params);
+
+  try {
+    const response = await axiosInstance.get<VisitsResponse>("/visits/all", {
+      params,
+    });
+    console.log(
+      "API Call: Response received with",
+      response.data.data.length,
+      "visits"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("API Call: Error fetching visits:", error);
+    throw error;
+  }
 };
 
 // Function to get appropriate badge color for visit type
@@ -216,6 +233,20 @@ export default function VisitsPage() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
+  // Visit types with hardcoded English labels
+  const VISIT_TYPES = [
+    { value: "all", label: "All Types" },
+    { value: "checkup", label: "Checkup" },
+    { value: "vaccination", label: "Vaccination" },
+    { value: "surgery", label: "Surgery" },
+    { value: "emergency", label: "Emergency" },
+    { value: "dental", label: "Dental" },
+  ];
+
+  // Flag to track manual filter changes vs. URL-driven changes
+  const isManualFilterChange = useRef(false);
+  const isInitialRender = useRef(true);
+
   // Get initial state from URL parameters or use defaults
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
   const initialSearch = searchParams.get("search") || "";
@@ -246,39 +277,71 @@ export default function VisitsPage() {
   const [visitTypeFilter, setVisitTypeFilter] = useState(
     initialVisitTypeFilter
   );
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: initialStartDate,
-    to: initialEndDate,
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(
+    initialStartDate || initialEndDate
+      ? { from: initialStartDate, to: initialEndDate }
+      : undefined
+  );
   const [page, setPage] = useState(currentPage);
   const [limit, setLimit] = useState(initialLimit);
 
-  // Debounce search term to prevent too many requests
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  // Add new state to store pending filter values
+  const [pendingSearchTerm, setPendingSearchTerm] = useState(initialSearch);
+  const [pendingDateRange, setPendingDateRange] = useState<
+    DateRange | undefined
+  >(
+    initialStartDate || initialEndDate
+      ? { from: initialStartDate, to: initialEndDate }
+      : undefined
+  );
 
-  // Function to clear all filters
+  // Function to apply all pending filters at once
+  const applyFilters = () => {
+    console.log("Manually applying filters", {
+      searchTerm: pendingSearchTerm,
+      dateRange: pendingDateRange,
+    });
+
+    isManualFilterChange.current = true;
+
+    // Apply all pending filters to the actual state
+    setSearchTerm(pendingSearchTerm);
+    setDateRange(pendingDateRange);
+    setPage(1); // Reset to page 1 when applying new filters
+  };
+
+  // Function to reset all filters
   const clearFilters = () => {
+    console.log("Manually clearing all filters");
+    isManualFilterChange.current = true;
+
+    // Reset both pending and active filters
+    setPendingSearchTerm("");
+    setPendingDateRange(undefined);
+
     setSearchTerm("");
     setStatusFilter("ALL");
     setVisitTypeFilter("all");
     setDateRange(undefined);
-
-    // Clear all query parameters
-    router.push(pathname, { scroll: false });
+    setPage(1);
   };
+
+  // Debounce search term to prevent too many requests
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Create query string function
   const createQueryString = useCallback(
     (params: Record<string, string | number | null>) => {
-      const urlParams = new URLSearchParams(searchParams.toString());
+      // Start with a fresh URLSearchParams object
+      const urlParams = new URLSearchParams();
 
       Object.entries(params).forEach(([key, value]) => {
-        if (value === null) {
-          urlParams.delete(key);
+        if (value === null || value === undefined || value === "") {
+          // Skip null/undefined/empty values
         } else {
           // Don't add limit to URL if it's the default value
           if (key === "limit" && value === ITEMS_PER_PAGE) {
-            urlParams.delete("limit");
+            // Skip default limit
           } else {
             urlParams.set(key, value.toString());
           }
@@ -287,14 +350,27 @@ export default function VisitsPage() {
 
       return urlParams.toString();
     },
-    [searchParams]
+    []
   );
 
-  // Update URL when filters change
+  // Update URL when filters change manually
   useEffect(() => {
+    if (!isManualFilterChange.current) {
+      return; // Skip if not a manual change
+    }
+
+    console.log("Updating URL due to manual filter change", {
+      page,
+      searchTerm,
+      visitTypeFilter,
+      dateRange,
+    });
+
+    // Always go to page 1 when filters change manually
+    const newPage = isManualFilterChange.current ? 1 : page;
+
     const params: Record<string, string | number | null> = {
-      // Always include page in the URL, don't use null value for page=1
-      page: page,
+      page: newPage,
       search: searchTerm || null,
       visitType: visitTypeFilter === "all" ? null : visitTypeFilter,
       status: statusFilter === "ALL" ? null : statusFilter,
@@ -306,32 +382,55 @@ export default function VisitsPage() {
     };
 
     const queryString = createQueryString(params);
-    // Use replace instead of push to avoid caching issues
+
+    // Use replace to avoid browser history issues
     router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {
       scroll: false,
     });
+
+    // Reset manual flag after URL update
+    isManualFilterChange.current = false;
+
+    // Update the page state if we changed it
+    if (newPage !== page) {
+      setPage(newPage);
+    }
   }, [
+    router,
+    pathname,
     page,
     searchTerm,
     visitTypeFilter,
     statusFilter,
     dateRange,
     limit,
-    router,
-    pathname,
     createQueryString,
   ]);
 
-  // Reset page when filters change
+  // Handle URL parameter changes (like browser back button or manual URL editing)
   useEffect(() => {
-    setPage(1);
-  }, [searchTerm, visitTypeFilter, statusFilter, dateRange, limit]);
+    // Skip on initial render to avoid conflicts with initial state
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
 
-  // Update local state if URL changes externally (like browser back button)
-  useEffect(() => {
+    // Skip if this was a manual filter change that triggered the URL update
+    if (isManualFilterChange.current) {
+      return;
+    }
+
+    console.log("URL params changed externally, updating state");
+
+    const newPage = parseInt(searchParams.get("page") || "1", 10);
     const newSearch = searchParams.get("search") || "";
-    const newStatus = searchParams.get("status") || "ALL";
     const newVisitType = searchParams.get("visitType") || "all";
+    const newStatus = searchParams.get("status") || "ALL";
+    const newLimit = parseInt(
+      searchParams.get("limit") || String(ITEMS_PER_PAGE),
+      10
+    );
+
     const newStartDate = searchParams.get("startDate")
       ? new Date(searchParams.get("startDate") || "")
       : undefined;
@@ -339,25 +438,30 @@ export default function VisitsPage() {
       ? new Date(searchParams.get("endDate") || "")
       : undefined;
 
+    const newDateRange =
+      newStartDate || newEndDate
+        ? { from: newStartDate, to: newEndDate }
+        : undefined;
+
+    // Update state only if values actually changed
+    if (newPage !== page) setPage(newPage);
     if (newSearch !== searchTerm) setSearchTerm(newSearch);
-    if (newStatus !== statusFilter) setStatusFilter(newStatus);
     if (newVisitType !== visitTypeFilter) setVisitTypeFilter(newVisitType);
+    if (newStatus !== statusFilter) setStatusFilter(newStatus);
+    if (newLimit !== limit) setLimit(newLimit);
 
-    // Only update date range if either date has changed
-    const currentStartISO = dateRange?.from?.toISOString();
-    const currentEndISO = dateRange?.to?.toISOString();
-    const newStartISO = newStartDate?.toISOString();
-    const newEndISO = newEndDate?.toISOString();
+    // Special comparison for date range
+    const currentStartStr = dateRange?.from?.toISOString().split("T")[0];
+    const currentEndStr = dateRange?.to?.toISOString().split("T")[0];
+    const newStartStr = newStartDate?.toISOString().split("T")[0];
+    const newEndStr = newEndDate?.toISOString().split("T")[0];
 
-    if (currentStartISO !== newStartISO || currentEndISO !== newEndISO) {
-      setDateRange({
-        from: newStartDate,
-        to: newEndDate,
-      });
+    if (currentStartStr !== newStartStr || currentEndStr !== newEndStr) {
+      setDateRange(newDateRange);
     }
-  }, [searchParams, searchTerm, statusFilter, visitTypeFilter, dateRange]);
+  }, [searchParams]);
 
-  // Fetch visits
+  // Fetch visits with proper query key
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: [
       "visits",
@@ -366,7 +470,8 @@ export default function VisitsPage() {
       debouncedSearchTerm,
       visitTypeFilter,
       statusFilter,
-      dateRange,
+      dateRange?.from?.toISOString().split("T")[0], // Use string values in query key
+      dateRange?.to?.toISOString().split("T")[0],
     ],
     queryFn: () =>
       fetchVisits({
@@ -534,9 +639,9 @@ export default function VisitsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Clinic Visits</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Visits</h1>
         <p className="text-muted-foreground mt-2">
-          View and manage all clinic visits
+          Manage and view your pet visits.
         </p>
       </div>
 
@@ -545,15 +650,15 @@ export default function VisitsPage() {
           <CardTitle className="text-xl">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              All Clinic Visits
+              Visits
             </div>
           </CardTitle>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <SlidersHorizontal className="h-4 w-4 mr-2" />
-                  Columns
+                  <SlidersHorizontal className="h-4 w-4 me-2" />
+                  Actions
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
@@ -562,7 +667,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("visitDate")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.visitDate && (
                       <Check className="h-3 w-3" />
                     )}
@@ -574,7 +679,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("pet")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.pet && (
                       <Check className="h-3 w-3" />
                     )}
@@ -586,7 +691,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("owner")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.owner && (
                       <Check className="h-3 w-3" />
                     )}
@@ -598,19 +703,19 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("visitType")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.visitType && (
                       <Check className="h-3 w-3" />
                     )}
                   </div>
-                  Visit Type
+                  Type
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="flex items-center cursor-pointer"
                   onClick={() => toggleColumn("nextReminder")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.nextReminder && (
                       <Check className="h-3 w-3" />
                     )}
@@ -622,7 +727,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("price")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.price && (
                       <Check className="h-3 w-3" />
                     )}
@@ -634,7 +739,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("weight")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.weight && (
                       <Check className="h-3 w-3" />
                     )}
@@ -646,7 +751,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("createdBy")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.createdBy && (
                       <Check className="h-3 w-3" />
                     )}
@@ -658,7 +763,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("updatedBy")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.updatedBy && (
                       <Check className="h-3 w-3" />
                     )}
@@ -670,7 +775,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("createdAt")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.createdAt && (
                       <Check className="h-3 w-3" />
                     )}
@@ -682,7 +787,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("updatedAt")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.updatedAt && (
                       <Check className="h-3 w-3" />
                     )}
@@ -694,7 +799,7 @@ export default function VisitsPage() {
                   onClick={() => toggleColumn("actions")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.actions && (
                       <Check className="h-3 w-3" />
                     )}
@@ -710,45 +815,59 @@ export default function VisitsPage() {
         <div className="px-6 pb-4">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-4">
+              {/* Date Range Picker */}
               <div className="flex-1 min-w-[240px]">
                 <DateRangePicker
-                  dateRange={dateRange}
-                  setDateRange={setDateRange}
+                  dateRange={pendingDateRange}
+                  setDateRange={setPendingDateRange}
                   placeholder="Filter by date range"
                 />
               </div>
+
+              {/* Search Field */}
               <div className="flex-1 min-w-[200px]">
-                <div className="relative">
+                <div className="relative flex-1">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="text"
-                    placeholder="Search visits..."
-                    value={searchTerm}
+                    placeholder="Search visits"
+                    value={pendingSearchTerm}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setSearchTerm(e.target.value)
+                      setPendingSearchTerm(e.target.value)
                     }
                     className="pl-8 pr-10"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        applyFilters();
+                      }
+                    }}
                   />
-                  {searchTerm && (
+                  {pendingSearchTerm && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3 py-0"
-                      onClick={() => setSearchTerm("")}
+                      onClick={() => setPendingSearchTerm("")}
                     >
                       <X className="h-4 w-4" />
-                      <span className="sr-only">Clear search</span>
+                      <span className="sr-only">Clear</span>
                     </Button>
                   )}
                 </div>
               </div>
+
+              {/* Visit Type Dropdown - auto fetch on change */}
               <div className="flex-1 min-w-[180px]">
                 <Select
                   value={visitTypeFilter}
-                  onValueChange={setVisitTypeFilter}
+                  onValueChange={(value: string) => {
+                    isManualFilterChange.current = true;
+                    setVisitTypeFilter(value);
+                    setPage(1); // Reset to page 1 when changing visit type
+                  }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Filter by visit type" />
+                    <SelectValue placeholder="Select visit type" />
                   </SelectTrigger>
                   <SelectContent className="w-full">
                     {VISIT_TYPES.map((type) => (
@@ -763,6 +882,17 @@ export default function VisitsPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Unified Search Button */}
+              <Button
+                type="button"
+                size="default"
+                onClick={applyFilters}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+              >
+                <Search className="h-4 w-4 me-2" />
+                Apply Filters
+              </Button>
             </div>
 
             {hasActiveFilters && (
@@ -773,14 +903,14 @@ export default function VisitsPage() {
                   onClick={clearFilters}
                   className="text-muted-foreground"
                 >
-                  <Filter className="h-3.5 w-3.5 mr-1" />
-                  Clear all filters
+                  <Filter className="h-3.5 w-3.5 me-1" />
+                  Clear Filters
                 </Button>
                 <div className="ml-4 text-sm text-muted-foreground">
                   {pagination && pagination.totalCount !== undefined && (
                     <span>
-                      {pagination.totalCount}{" "}
-                      {pagination.totalCount === 1 ? "visit" : "visits"} found
+                      {pagination.totalCount} visit
+                      {pagination.totalCount === 1 ? "" : "s"} found
                     </span>
                   )}
                 </div>
@@ -796,7 +926,7 @@ export default function VisitsPage() {
                 <TableHeader className="bg-muted/50">
                   <TableRow className="hover:bg-muted/50">
                     {visitColumnsVisibility.visitDate && (
-                      <TableHead className="font-medium">Visit Date</TableHead>
+                      <TableHead className="font-medium">Date</TableHead>
                     )}
                     {visitColumnsVisibility.pet && (
                       <TableHead className="font-medium">Pet</TableHead>
@@ -805,7 +935,7 @@ export default function VisitsPage() {
                       <TableHead className="font-medium">Owner</TableHead>
                     )}
                     {visitColumnsVisibility.visitType && (
-                      <TableHead className="font-medium">Visit Type</TableHead>
+                      <TableHead className="font-medium">Type</TableHead>
                     )}
                     {visitColumnsVisibility.price && (
                       <TableHead className="font-medium">Price</TableHead>
@@ -932,7 +1062,7 @@ export default function VisitsPage() {
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-muted/50">
                   {visitColumnsVisibility.visitDate && (
-                    <TableHead className="font-medium">Visit Date</TableHead>
+                    <TableHead className="font-medium">Date</TableHead>
                   )}
                   {visitColumnsVisibility.pet && (
                     <TableHead className="font-medium">Pet</TableHead>
@@ -941,7 +1071,7 @@ export default function VisitsPage() {
                     <TableHead className="font-medium">Owner</TableHead>
                   )}
                   {visitColumnsVisibility.visitType && (
-                    <TableHead className="font-medium">Visit Type</TableHead>
+                    <TableHead className="font-medium">Type</TableHead>
                   )}
                   {visitColumnsVisibility.price && (
                     <TableHead className="font-medium">Price</TableHead>
@@ -1119,30 +1249,10 @@ export default function VisitsPage() {
                     value={`${limit}`}
                     onValueChange={(value: string) => {
                       const newLimit = Number(value);
+                      isManualFilterChange.current = true;
                       setLimit(newLimit);
-                      setPage(1); // Reset page when limit changes
 
-                      // Update URL immediately to bypass Next.js streaming cache issues
-                      const params = new URLSearchParams(
-                        searchParams.toString()
-                      );
-
-                      // Always set page explicitly to 1
-                      params.set("page", "1");
-
-                      // Update limit parameter
-                      if (newLimit === ITEMS_PER_PAGE) {
-                        params.delete("limit");
-                      } else {
-                        params.set("limit", newLimit.toString());
-                      }
-
-                      router.replace(`${pathname}?${params.toString()}`, {
-                        scroll: false,
-                      });
-
-                      // Force React Query to refetch with the new limit
-                      queryClient.invalidateQueries({ queryKey: ["visits"] });
+                      // Let the URL update effect handle the URL change
                     }}
                   >
                     <SelectTrigger className="h-8 w-[70px]">
@@ -1169,18 +1279,10 @@ export default function VisitsPage() {
                   )}
                   totalCount={data?.pagination?.totalCount ?? 0}
                   onPageChange={(newPage) => {
+                    console.log("Manual page change to", newPage);
+                    isManualFilterChange.current = true;
                     setPage(newPage);
-
-                    // Update URL with new page
-                    const urlParams = new URLSearchParams(
-                      searchParams.toString()
-                    );
-                    urlParams.set("page", newPage.toString());
-
-                    // Use replace to avoid caching issues
-                    router.replace(`${pathname}?${urlParams.toString()}`, {
-                      scroll: false,
-                    });
+                    // Let the URL update effect handle the URL change
                   }}
                 />
               </div>

@@ -4,6 +4,8 @@ import { useAuthStore } from "@/store/auth";
 import { useRouter } from "next/navigation";
 import { Menu, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { useTheme } from "next-themes";
 import {
   Sheet,
   SheetContent,
@@ -28,7 +30,7 @@ export function Header() {
   // Use individual selectors to avoid unnecessary rerenders
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-
+  const { theme } = useTheme();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -63,17 +65,33 @@ export function Header() {
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="md:hidden">
               <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle menu</span>
+              <span className="sr-only">Toggle Menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0">
             <SheetHeader className="p-4 border-b">
-              <SheetTitle className="text-lg">Vet Clinic</SheetTitle>
+              <SheetTitle className="text-lg flex justify-center">
+                <Image
+                  src={theme === "dark" ? "/logo-dark.svg" : "/logo.svg"}
+                  alt="VetSync"
+                  width={120}
+                  height={32}
+                  priority
+                />
+              </SheetTitle>
             </SheetHeader>
             <Sidebar />
           </SheetContent>
         </Sheet>
-        <div className="md:hidden ml-2 font-bold">Vet Clinic</div>
+        <div className="md:hidden ml-2">
+          <Image
+            src={theme === "dark" ? "/logo-dark.svg" : "/logo.svg"}
+            alt="VetSync"
+            width={100}
+            height={28}
+            priority
+          />
+        </div>
       </div>
 
       <div className="flex items-center space-x-4">

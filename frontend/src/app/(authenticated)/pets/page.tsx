@@ -17,6 +17,8 @@ import {
   Filter,
   SlidersHorizontal,
   Check,
+  PlusCircle,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axios";
@@ -313,35 +315,35 @@ export default function PetsPage() {
 
   // Function for creating a new pet
   const createPetFn = async (newPetData: PetFormValues) => {
-    const { ownerId, ...petDetails } = newPetData;
-
-    // Format date for API if it exists
-    const formattedData = {
-      ...petDetails,
-      birthDate: petDetails.birthDate
-        ? petDetails.birthDate.toISOString()
-        : undefined,
-    };
-
-    const response = await axiosInstance.post(
-      `/owners/${ownerId}/pets`,
-      formattedData
-    );
-    return response.data;
+    try {
+      const response = await axiosInstance.post(
+        `/owners/${newPetData.ownerId}/pets`,
+        newPetData
+      );
+      toast.success("Pet created successfully");
+      return response.data;
+    } catch (error) {
+      const errorMessage =
+        (error as AxiosError<ErrorResponse>).response?.data?.message ||
+        (error as Error).message ||
+        "An error occurred";
+      toast.error(`Failed to create pet. ${errorMessage}`);
+      throw error;
+    }
   };
 
   const { mutate: createPet, isPending: isCreatingPet } = useMutation({
     mutationFn: createPetFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pets"] });
-      toast.success("Pet added successfully");
+      toast.success("Pet created successfully");
       setIsPetDialogOpen(false);
     },
     onError: (error: AxiosError<ErrorResponse>) => {
       console.error("Error creating pet:", error);
       const errorMessage =
         error.response?.data?.message || "Failed to create pet";
-      toast.error(errorMessage);
+      toast.error(`Failed to create pet. ${errorMessage}`);
     },
   });
 
@@ -351,25 +353,22 @@ export default function PetsPage() {
     ownerId: string;
     updateData: Partial<PetFormValues>;
   }) => {
-    const { petId, ownerId, updateData } = data;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { ownerId: _, ...petDetails } = updateData;
-
-    // Format date for API if it exists
-    const formattedData = {
-      ...petDetails,
-      birthDate: petDetails.birthDate
-        ? petDetails.birthDate instanceof Date
-          ? petDetails.birthDate.toISOString()
-          : petDetails.birthDate
-        : undefined,
-    };
-
-    const response = await axiosInstance.patch(
-      `/owners/${ownerId}/pets/${petId}`,
-      formattedData
-    );
-    return response.data;
+    try {
+      const { petId, ownerId, updateData } = data;
+      const response = await axiosInstance.patch(
+        `/owners/${ownerId}/pets/${petId}`,
+        updateData
+      );
+      toast.success("Pet updated successfully");
+      return response.data;
+    } catch (error) {
+      const errorMessage =
+        (error as AxiosError<ErrorResponse>).response?.data?.message ||
+        (error as Error).message ||
+        "An error occurred";
+      toast.error(`Failed to update pet. ${errorMessage}`);
+      throw error;
+    }
   };
 
   const { mutate: updatePet, isPending: isUpdatingPet } = useMutation({
@@ -384,17 +383,27 @@ export default function PetsPage() {
       console.error("Error updating pet:", error);
       const errorMessage =
         error.response?.data?.message || "Failed to update pet";
-      toast.error(errorMessage);
+      toast.error(`Failed to update pet. ${errorMessage}`);
     },
   });
 
   // Function for deleting a pet
   const deletePetFn = async (data: { petId: string; ownerId: string }) => {
-    const { petId, ownerId } = data;
-    const response = await axiosInstance.delete(
-      `/owners/${ownerId}/pets/${petId}`
-    );
-    return response.data;
+    try {
+      const { petId, ownerId } = data;
+      const response = await axiosInstance.delete(
+        `/owners/${ownerId}/pets/${petId}`
+      );
+      toast.success("Pet deleted successfully");
+      return response.data;
+    } catch (error) {
+      const errorMessage =
+        (error as AxiosError<ErrorResponse>).response?.data?.message ||
+        (error as Error).message ||
+        "An error occurred";
+      toast.error(`Failed to delete pet. ${errorMessage}`);
+      throw error;
+    }
   };
 
   const { mutate: deletePet, isPending: isDeletingPet } = useMutation({
@@ -408,7 +417,7 @@ export default function PetsPage() {
       console.error("Error deleting pet:", error);
       const errorMessage =
         error.response?.data?.message || "Failed to delete pet";
-      toast.error(errorMessage);
+      toast.error(`Failed to delete pet. ${errorMessage}`);
       setDeletingPet(null);
     },
   });
@@ -418,23 +427,32 @@ export default function PetsPage() {
     petId: string;
     visitData: VisitFormValues;
   }) => {
-    const { petId, visitData } = data;
+    try {
+      const { petId, visitData } = data;
 
-    // Format dates for API
-    const formattedData = {
-      ...visitData,
-      visitDate: visitData.visitDate.toISOString(),
-      nextReminderDate: visitData.nextReminderDate
-        ? visitData.nextReminderDate.toISOString()
-        : null,
-      price: visitData.price,
-    };
+      // Format dates for API
+      const formattedData = {
+        ...visitData,
+        visitDate: visitData.visitDate.toISOString(),
+        nextReminderDate: visitData.nextReminderDate
+          ? visitData.nextReminderDate.toISOString()
+          : null,
+      };
 
-    const response = await axiosInstance.post(
-      `/pets/${petId}/visits`,
-      formattedData
-    );
-    return response.data;
+      const response = await axiosInstance.post(
+        `/pets/${petId}/visits`,
+        formattedData
+      );
+      toast.success("Visit created successfully");
+      return response.data;
+    } catch (error) {
+      const errorMessage =
+        (error as AxiosError<ErrorResponse>).response?.data?.message ||
+        (error as Error).message ||
+        "An error occurred";
+      toast.error(`Failed to create visit. ${errorMessage}`);
+      throw error;
+    }
   };
 
   const { mutate: createVisit, isPending: isCreatingVisit } = useMutation({
@@ -445,7 +463,7 @@ export default function PetsPage() {
           queryKey: ["visits", selectedPetForVisit.id],
         });
       }
-      toast.success("Visit added successfully");
+      toast.success("Visit created successfully");
       setIsVisitDialogOpen(false);
       setSelectedPetForVisit(null);
     },
@@ -453,7 +471,7 @@ export default function PetsPage() {
       console.error("Error creating visit:", error);
       const errorMessage =
         error.response?.data?.message || "Failed to create visit";
-      toast.error(errorMessage);
+      toast.error(`Failed to create visit. ${errorMessage}`);
     },
   });
 
@@ -554,324 +572,170 @@ export default function PetsPage() {
     isLoadingOwners || !owners || owners.length === 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Pets</h1>
+        <p className="text-muted-foreground mt-2">
+          Manage your pets efficiently
+        </p>
+      </div>
+
       <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl">All Pets</CardTitle>
+          <CardTitle className="text-xl">Pets List</CardTitle>
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <SlidersHorizontal className="h-4 w-4 mr-2" />
-                  Columns
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56">
-                <DropdownMenuItem
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleColumn("name")}
-                  inset={false}
-                >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
-                    {petColumnsVisibility.name && <Check className="h-3 w-3" />}
-                  </div>
-                  Name
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleColumn("species")}
-                  inset={false}
-                >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
-                    {petColumnsVisibility.species && (
-                      <Check className="h-3 w-3" />
-                    )}
-                  </div>
-                  Species
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleColumn("breed")}
-                  inset={false}
-                >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
-                    {petColumnsVisibility.breed && (
-                      <Check className="h-3 w-3" />
-                    )}
-                  </div>
-                  Breed
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleColumn("owner")}
-                  inset={false}
-                >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
-                    {petColumnsVisibility.owner && (
-                      <Check className="h-3 w-3" />
-                    )}
-                  </div>
-                  Owner
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleColumn("createdBy")}
-                  inset={false}
-                >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
-                    {petColumnsVisibility.createdBy && (
-                      <Check className="h-3 w-3" />
-                    )}
-                  </div>
-                  Created By
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleColumn("updatedBy")}
-                  inset={false}
-                >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
-                    {petColumnsVisibility.updatedBy && (
-                      <Check className="h-3 w-3" />
-                    )}
-                  </div>
-                  Updated By
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleColumn("actions")}
-                  inset={false}
-                >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
-                    {petColumnsVisibility.actions && (
-                      <Check className="h-3 w-3" />
-                    )}
-                  </div>
-                  Actions
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Dialog open={isPetDialogOpen} onOpenChange={setIsPetDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="flex items-center gap-1">
-                  <Plus className="h-4 w-4" />
-                  Add Pet
-                </Button>
-              </DialogTrigger>
-              <DialogContent
-                className="sm:max-w-md max-h-[90vh] overflow-y-auto"
-                onInteractOutside={(e) => e.preventDefault()}
-              >
-                <DialogHeader className="pb-2">
-                  <DialogTitle className="text-xl">Add New Pet</DialogTitle>
-                </DialogHeader>
-                <PetForm
-                  owners={owners}
-                  onSubmit={handleCreatePet}
-                  onClose={() => setIsPetDialogOpen(false)}
-                  isLoading={isCreatingPet || isLoadingOwners}
-                />
-              </DialogContent>
-            </Dialog>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center"
+              onClick={() => {
+                setPetColumnsVisibility((prev) => ({
+                  ...prev,
+                  createdBy: !prev.createdBy,
+                  updatedBy: !prev.updatedBy,
+                }));
+              }}
+            >
+              <SlidersHorizontal className="me-2 h-4 w-4" />
+              View Details
+            </Button>
+            <Button
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={() => setIsPetDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add New Pet
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {/* Search input */}
-          <div className="px-6 py-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="px-6 py-4 border-b bg-muted/40">
+            <div className="relative">
+              <Search className="absolute top-1/2 start-3 -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                type="text"
-                placeholder="Search pets by name, species, owner..."
+                type="search"
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                }}
-                className="pl-8 pr-10"
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search pets"
+                className="ps-10 w-full bg-white dark:bg-muted focus-visible:ring-primary"
               />
               {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-0"
+                <button
+                  type="button"
                   onClick={() => setSearchTerm("")}
+                  className="absolute top-1/2 end-3 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+                  aria-label="Cancel"
                 >
                   <X className="h-4 w-4" />
-                  <span className="sr-only">Clear search</span>
-                </Button>
+                </button>
               )}
             </div>
-
-            {statusFilter !== "ALL" ||
+            {/* Filter chips */}
+            {(statusFilter !== "ALL" ||
               speciesFilter !== "ALL" ||
-              (sexFilter !== "ALL" && (
-                <div className="flex items-center mt-3">
+              sexFilter !== "ALL" ||
+              searchTerm) && (
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                <div className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-md flex items-center">
+                  <Filter className="me-1 h-3 w-3" />
+                  Active Filter
+                </div>
+                {(statusFilter !== "ALL" ||
+                  speciesFilter !== "ALL" ||
+                  sexFilter !== "ALL" ||
+                  searchTerm) && (
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
+                    className="h-6 px-2 text-xs"
                     onClick={() => {
+                      setSearchTerm("");
                       setStatusFilter("ALL");
                       setSpeciesFilter("ALL");
                       setSexFilter("ALL");
-                      setPage(1);
+                      // Reset URL params
+                      const newParams = createQueryString({
+                        search: null,
+                        status: null,
+                        species: null,
+                        sex: null,
+                        page: 1,
+                      });
+                      router.replace(`${pathname}?${newParams}`);
                     }}
-                    className="text-muted-foreground"
                   >
-                    <Filter className="h-3.5 w-3.5 mr-1" />
-                    Clear all filters
+                    Clear Filters
                   </Button>
-                  <div className="ml-4 text-sm text-muted-foreground">
-                    {meta?.totalCount !== undefined && (
-                      <span>
-                        {meta.totalCount}{" "}
-                        {meta.totalCount === 1 ? "pet" : "pets"} found
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )}
+              </div>
+            )}
           </div>
 
           {isLoading ? (
-            <div className="w-full overflow-hidden">
-              <Table className="w-full">
-                <TableHeader className="bg-muted/50">
-                  <TableRow className="hover:bg-muted/50">
-                    {petColumnsVisibility.name && (
-                      <TableHead className="font-medium">Name</TableHead>
-                    )}
-                    {petColumnsVisibility.species && (
-                      <TableHead className="font-medium">Species</TableHead>
-                    )}
-                    {petColumnsVisibility.breed && (
-                      <TableHead className="font-medium">Breed</TableHead>
-                    )}
-                    {petColumnsVisibility.owner && (
-                      <TableHead className="font-medium">Owner</TableHead>
-                    )}
-                    {petColumnsVisibility.createdBy && (
-                      <TableHead className="font-medium">Created By</TableHead>
-                    )}
-                    {petColumnsVisibility.updatedBy && (
-                      <TableHead className="font-medium">Updated By</TableHead>
-                    )}
-                    {petColumnsVisibility.actions && (
-                      <TableHead className="text-center font-medium w-48">
-                        Actions
-                      </TableHead>
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={index} className="hover:bg-muted/50">
-                      {petColumnsVisibility.name && (
-                        <TableCell className="font-medium">
-                          <Skeleton className="h-4 w-24" />
-                        </TableCell>
-                      )}
-                      {petColumnsVisibility.species && (
-                        <TableCell className="text-muted-foreground">
-                          <Skeleton className="h-5 w-16" />
-                        </TableCell>
-                      )}
-                      {petColumnsVisibility.breed && (
-                        <TableCell className="text-muted-foreground">
-                          <Skeleton className="h-4 w-28" />
-                        </TableCell>
-                      )}
-                      {petColumnsVisibility.owner && (
-                        <TableCell className="text-muted-foreground">
-                          <Skeleton className="h-4 w-32" />
-                        </TableCell>
-                      )}
-                      {petColumnsVisibility.createdBy && (
-                        <TableCell className="text-muted-foreground">
-                          <Skeleton className="h-4 w-32" />
-                        </TableCell>
-                      )}
-                      {petColumnsVisibility.updatedBy && (
-                        <TableCell className="text-muted-foreground">
-                          <Skeleton className="h-4 w-32" />
-                        </TableCell>
-                      )}
-                      {petColumnsVisibility.actions && (
-                        <TableCell className="text-center">
-                          <div className="flex justify-center items-center gap-2">
-                            <Skeleton className="h-8 w-24" />
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            // Loading state UI
+            <div className="p-6">
+              <div className="flex flex-col gap-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
             </div>
           ) : isError ? (
+            // Error state UI
             <div className="py-8 text-center">
               <p className="text-red-500">
-                Error loading pets:{" "}
-                {(error as Error)?.message || "Unknown error"}
+                Error: {(error as Error)?.message || "An error occurred"}
               </p>
               <Button
                 variant="outline"
                 className="mt-4"
                 onClick={() => refetch()}
               >
-                <RefreshCcw className="mr-2 h-4 w-4" />
+                <RefreshCcw className="me-2 h-4 w-4" />
                 Retry
               </Button>
             </div>
           ) : pets && pets.length > 0 ? (
-            <>
-              <Table className="w-full">
-                <TableCaption className="text-sm text-muted-foreground">
-                  Showing page {meta?.currentPage} of {meta?.totalPages} (
-                  {meta?.totalCount} total pets)
-                </TableCaption>
-                <TableHeader className="bg-muted/50">
-                  <TableRow className="hover:bg-muted/50">
-                    {petColumnsVisibility.name && (
-                      <TableHead className="font-medium">Name</TableHead>
-                    )}
+            // Pets table
+            <div className="relative overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {petColumnsVisibility.name && <TableHead>Name</TableHead>}
                     {petColumnsVisibility.species && (
-                      <TableHead className="font-medium">Species</TableHead>
+                      <TableHead>Species</TableHead>
                     )}
-                    {petColumnsVisibility.breed && (
-                      <TableHead className="font-medium">Breed</TableHead>
-                    )}
-                    {petColumnsVisibility.owner && (
-                      <TableHead className="font-medium">Owner</TableHead>
-                    )}
+                    {petColumnsVisibility.breed && <TableHead>Breed</TableHead>}
+                    {petColumnsVisibility.owner && <TableHead>Owner</TableHead>}
                     {petColumnsVisibility.createdBy && (
-                      <TableHead className="font-medium">Created By</TableHead>
+                      <TableHead>Created By</TableHead>
                     )}
                     {petColumnsVisibility.updatedBy && (
-                      <TableHead className="font-medium">Updated By</TableHead>
+                      <TableHead>Updated By</TableHead>
                     )}
                     {petColumnsVisibility.actions && (
-                      <TableHead className="text-center font-medium w-48">
-                        Actions
-                      </TableHead>
+                      <TableHead className="text-end">Actions</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
-                <TableBody className="divide-y">
+                <TableBody>
                   {pets.map((pet) => (
-                    <TableRow key={pet.id} className="hover:bg-muted/50">
+                    <TableRow key={pet.id}>
                       {petColumnsVisibility.name && (
                         <TableCell className="font-medium">
                           <Link
                             href={`/pets/${pet.id}`}
-                            className="text-primary hover:underline"
+                            className="hover:underline text-primary"
                           >
                             {pet.name}
                           </Link>
                         </TableCell>
                       )}
                       {petColumnsVisibility.species && (
-                        <TableCell className="text-center">
+                        <TableCell>
                           <Badge
                             variant="outline"
                             className={getSpeciesBadgeColor(pet.species)}
@@ -881,309 +745,246 @@ export default function PetsPage() {
                         </TableCell>
                       )}
                       {petColumnsVisibility.breed && (
-                        <TableCell className="text-muted-foreground">
-                          {pet.breed}
-                        </TableCell>
+                        <TableCell>{pet.breed || "-"}</TableCell>
                       )}
                       {petColumnsVisibility.owner && (
-                        <TableCell className="text-muted-foreground">
-                          {pet.owner
-                            ? `${pet.owner.firstName} ${pet.owner.lastName}`
-                            : "Unknown"}
+                        <TableCell>
+                          {pet.owner ? (
+                            <Link
+                              href={`/owners/${pet.owner.id}`}
+                              className="hover:underline text-primary"
+                            >
+                              {pet.owner.firstName} {pet.owner.lastName}
+                            </Link>
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
                       )}
                       {petColumnsVisibility.createdBy && (
-                        <TableCell className="text-muted-foreground">
+                        <TableCell>
                           {pet.createdBy
-                            ? `${pet.createdBy.firstName || ""} ${
-                                pet.createdBy.lastName || ""
-                              }`.trim() || "Unknown"
-                            : "System"}
+                            ? `${pet.createdBy.firstName} ${pet.createdBy.lastName}`
+                            : "-"}
                         </TableCell>
                       )}
                       {petColumnsVisibility.updatedBy && (
-                        <TableCell className="text-muted-foreground">
+                        <TableCell>
                           {pet.updatedBy
-                            ? `${pet.updatedBy.firstName || ""} ${
-                                pet.updatedBy.lastName || ""
-                              }`.trim() || "Unknown"
-                            : "System"}
+                            ? `${pet.updatedBy.firstName} ${pet.updatedBy.lastName}`
+                            : "-"}
                         </TableCell>
                       )}
                       {petColumnsVisibility.actions && (
-                        <TableCell className="text-center">
-                          <div className="flex justify-center items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddVisit(pet)}
-                              className="mr-1"
-                            >
-                              <Calendar className="h-4 w-4 mr-1" />
-                              Add Visit
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <span className="sr-only">Open menu</span>
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="w-36"
-                                sideOffset={4}
+                        <TableCell className="text-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                aria-label="View Details"
                               >
-                                <DropdownMenuItem
-                                  onClick={() => handleEditClick(pet)}
-                                  className="cursor-pointer text-left"
-                                  inset={false}
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-[160px]"
+                            >
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/pets/${pet.id}`}
+                                  className="flex items-center gap-2"
                                 >
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  asChild
-                                  className="cursor-pointer text-left"
-                                  inset={false}
-                                >
-                                  <Link
-                                    href={`/pets/${pet.id}/visits`}
-                                    className="flex items-center w-full"
-                                  >
-                                    <ClipboardList className="mr-2 h-4 w-4" />
-                                    Visits
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteClick(pet)}
-                                  className="text-red-600 focus:text-red-600 cursor-pointer text-left"
-                                  inset={false}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                                  <ClipboardList className="h-4 w-4" />
+                                  View Details
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleAddVisit(pet)}
+                              >
+                                <Calendar className="me-2 h-4 w-4" />
+                                Add Visit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleEditClick(pet)}
+                              >
+                                <Edit className="me-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteClick(pet)}
+                                className="text-red-500 focus:text-red-500"
+                              >
+                                <Trash2 className="me-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       )}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-
-              {/* Pagination Controls */}
-              {data?.meta && data.meta.totalPages > 0 && (
-                <div className="px-6 py-4 border-t">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <p className="text-sm font-medium">Rows per page</p>
-                      <Select
-                        value={`${limit}`}
-                        onValueChange={(value: string) => {
-                          const newLimit = Number(value);
-                          setLimit(newLimit);
-                          setPage(1); // Reset page when limit changes
-
-                          // Update URL immediately to bypass Next.js streaming cache issues
-                          const params = new URLSearchParams(
-                            searchParams.toString()
-                          );
-
-                          // Always set page explicitly to 1
-                          params.set("page", "1");
-
-                          // Update limit parameter
-                          if (newLimit === PAGE_SIZES[1]) {
-                            params.delete("limit");
-                          } else {
-                            params.set("limit", newLimit.toString());
-                          }
-
-                          router.replace(`${pathname}?${params.toString()}`, {
-                            scroll: false,
-                          });
-
-                          // Force React Query to refetch with the new limit
-                          queryClient.invalidateQueries({ queryKey: ["pets"] });
-                        }}
-                      >
-                        <SelectTrigger className="h-8 w-[70px]">
-                          <SelectValue placeholder={limit} />
-                        </SelectTrigger>
-                        <SelectContent side="top" className="">
-                          {PAGE_SIZES.map((pageSize) => (
-                            <SelectItem
-                              key={pageSize}
-                              value={`${pageSize}`}
-                              className=""
-                            >
-                              {pageSize}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <SimplePagination
-                      currentPage={page}
-                      totalPages={Math.ceil(
-                        (data?.meta?.totalCount ?? 0) / limit
-                      )}
-                      totalCount={data?.meta?.totalCount ?? 0}
-                      onPageChange={(newPage) => {
-                        setPage(newPage);
-
-                        // Update URL with new page
-                        const urlParams = new URLSearchParams(
-                          searchParams.toString()
-                        );
-                        urlParams.set("page", newPage.toString());
-
-                        // Use replace to avoid caching issues
-                        router.replace(`${pathname}?${urlParams.toString()}`, {
-                          scroll: false,
-                        });
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </>
+            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <PawPrint className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-6">
-                {statusFilter !== "ALL" ||
-                speciesFilter !== "ALL" ||
-                sexFilter !== "ALL"
-                  ? "No pets found matching your filters. Try adjusting or clearing your filters."
-                  : isNewPetButtonDisabled
-                  ? "No owners registered yet. Please add an owner first before adding pets."
-                  : "No pets registered yet. Add your first pet to get started."}
-              </p>
-              {statusFilter !== "ALL" ||
-              speciesFilter !== "ALL" ||
-              sexFilter !== "ALL" ? (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setStatusFilter("ALL");
-                    setSpeciesFilter("ALL");
-                    setSexFilter("ALL");
-                    setPage(1);
-                  }}
-                >
-                  <Filter className="mr-2 h-4 w-4" />
-                  Clear All Filters
-                </Button>
-              ) : isNewPetButtonDisabled ? (
-                <Button onClick={() => router.push("/owners")}>
-                  <Users className="mr-2 h-4 w-4" />
-                  Register an Owner First
-                </Button>
-              ) : (
-                <Button onClick={() => setIsPetDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add New Pet
-                </Button>
-              )}
+            // Empty state UI
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="mb-3 rounded-full bg-muted p-3">
+                <PawPrint className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="mb-1 text-lg font-medium">No pets found</h3>
+              <Button
+                onClick={() => setIsPetDialogOpen(true)}
+                className="mt-3"
+                size="sm"
+              >
+                <PlusCircle className="me-2 h-4 w-4" />
+                Add New Pet
+              </Button>
+            </div>
+          )}
+
+          {/* Pagination Controls with Page Size Selector */}
+          {meta && meta.totalPages > 0 && (
+            <div className="px-6 py-4 border-t">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                  <p className="text-sm font-medium">Rows per page</p>
+                  <Select
+                    value={`${limit}`}
+                    onValueChange={(value: string) => {
+                      setLimit(Number(value));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue placeholder={limit} />
+                    </SelectTrigger>
+                    <SelectContent side="top" className="">
+                      {PAGE_SIZES.map((pageSize) => (
+                        <SelectItem
+                          key={pageSize}
+                          value={`${pageSize}`}
+                          className=""
+                        >
+                          {pageSize}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <SimplePagination
+                  currentPage={page}
+                  totalPages={Math.ceil((meta?.totalCount ?? 0) / limit)}
+                  totalCount={meta?.totalCount ?? 0}
+                  onPageChange={setPage}
+                />
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
+      {/* Add Pet Dialog */}
+      <Dialog open={isPetDialogOpen} onOpenChange={setIsPetDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Pet</DialogTitle>
+          </DialogHeader>
+          <PetForm
+            onSubmit={handleCreatePet}
+            onClose={() => setIsPetDialogOpen(false)}
+            isLoading={isCreatingPet}
+            owners={owners}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Pet Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent
-          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
-          onInteractOutside={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="pb-4">
-            <DialogTitle className="text-xl font-bold">Edit Pet</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Update the pet information
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Pet</DialogTitle>
           </DialogHeader>
-          {editingPet && owners && (
+          {editingPet && (
             <PetForm
-              initialData={editingPet.initialFormData}
+              initialData={{
+                name: editingPet.name,
+                species: editingPet.species,
+                breed: editingPet.breed || "",
+                birthDate: editingPet.birthDate
+                  ? new Date(editingPet.birthDate)
+                  : null,
+                gender: editingPet.gender || "",
+                notes: editingPet.notes || "",
+                ownerId: editingPet.ownerId,
+              }}
               onSubmit={handleUpdatePet}
-              onClose={() => setIsEditDialogOpen(false)}
-              owners={owners}
+              onClose={() => {
+                setIsEditDialogOpen(false);
+                setEditingPet(null);
+              }}
               isLoading={isUpdatingPet}
+              owners={owners}
             />
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Delete Pet Confirmation Dialog */}
+      {/* Delete Pet Confirmation */}
       <AlertDialog
         open={!!deletingPet}
-        onOpenChange={(open) => !open && setDeletingPet(null)}
+        onOpenChange={() => setDeletingPet(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Pet</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete{" "}
-              <span className="font-medium">{deletingPet?.name}</span> from the
-              system.
+              Are you sure you want to delete this pet?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeletePet}
-              className="bg-red-600 text-white hover:bg-red-700"
               disabled={isDeletingPet}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeletingPet ? "Deleting..." : "Delete"}
+              {isDeletingPet ? (
+                <>
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                  Please Wait
+                </>
+              ) : (
+                "Delete"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Add Visit Dialog */}
-      <Dialog
-        open={isVisitDialogOpen}
-        onOpenChange={(open) => !open && setIsVisitDialogOpen(false)}
-      >
-        <DialogContent
-          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
-          onInteractOutside={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="pb-4">
-            <DialogTitle className="text-xl font-bold">
-              Add New Visit
+      <Dialog open={isVisitDialogOpen} onOpenChange={setIsVisitDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              Add Visit
+              {selectedPetForVisit && `: ${selectedPetForVisit.name}`}
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              {selectedPetForVisit
-                ? `Record a visit for ${selectedPetForVisit.name}`
-                : "Record a new visit"}
-            </DialogDescription>
           </DialogHeader>
-          <VisitForm
-            onSubmit={handleCreateVisit}
-            onClose={() => {
-              setIsVisitDialogOpen(false);
-              setSelectedPetForVisit(null);
-            }}
-            isLoading={isCreatingVisit}
-            selectedPetData={{
-              owner: selectedPetForVisit?.owner
-                ? {
-                    allowAutomatedReminders:
-                      selectedPetForVisit.owner.allowAutomatedReminders ?? true,
-                  }
-                : { allowAutomatedReminders: true },
-            }}
-          />
+          {selectedPetForVisit && (
+            <VisitForm
+              petId={selectedPetForVisit.id}
+              onSubmit={handleCreateVisit}
+              onClose={() => {
+                setIsVisitDialogOpen(false);
+                setSelectedPetForVisit(null);
+              }}
+              isLoading={isCreatingVisit}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -250,7 +250,8 @@ export function AdminEditUserForm({
                 <FormLabel>First Name</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="First Name"
+                    placeholder="First name"
+                    autoComplete="given-name"
                     disabled={isLoading}
                     {...field}
                   />
@@ -268,7 +269,8 @@ export function AdminEditUserForm({
                 <FormLabel>Last Name</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Last Name"
+                    placeholder="Last name"
+                    autoComplete="family-name"
                     disabled={isLoading}
                     {...field}
                   />
@@ -284,7 +286,7 @@ export function AdminEditUserForm({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>New Password (Optional)</FormLabel>
+              <FormLabel>New Password</FormLabel>
               <FormControl>
                 <Input
                   placeholder="Leave blank to keep current password"
@@ -295,69 +297,81 @@ export function AdminEditUserForm({
                 />
               </FormControl>
               <FormDescription>
-                Minimum 8 characters. Enter only if you want to change the
-                password.
+                Minimum 8 characters. Leave empty to keep current password.
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <DebouncedSelect
-              label="Role"
-              value={role}
-              disabled={isLoading}
-              options={[
-                { value: "ADMIN", label: "Platform Admin" },
-                { value: "CLINIC_ADMIN", label: "Clinic Admin" },
-                { value: "STAFF", label: "Staff" },
-              ]}
-              onValueChange={handleRoleChange}
-              debounceMs={100}
-            />
-            <div className="h-5 mt-1">
-              {form.formState.errors.role && (
-                <p className="text-sm font-medium text-destructive">
-                  {form.formState.errors.role.message}
-                </p>
-              )}
-            </div>
-          </div>
+        <FormField
+          control={form.control}
+          name="role"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Role</FormLabel>
+              <FormControl>
+                <DebouncedSelect
+                  label="Role"
+                  value={field.value || role}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    handleRoleChange(value);
+                  }}
+                  disabled={isLoading}
+                  options={[
+                    { value: "ADMIN", label: "Admin" },
+                    { value: "CLINIC_ADMIN", label: "Clinic Admin" },
+                    { value: "STAFF", label: "Staff" },
+                  ]}
+                />
+              </FormControl>
+              <FormDescription>
+                Admin: Full system access, Clinic Admin: Manage clinic users,
+                Staff: Day-to-day operations
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-          <div>
-            <DebouncedSelect
-              label="Clinic"
-              value={clinicId === null ? "null" : clinicId}
-              disabled={isLoading}
-              options={[
-                {
-                  value: "null",
-                  label: role === "ADMIN" ? "No Clinic (Admin)" : "None",
-                },
-                ...clinics.map((clinic) => ({
-                  value: clinic.id,
-                  label: clinic.name,
-                })),
-              ]}
-              onValueChange={handleClinicChange}
-              debounceMs={100}
-            />
-            <FormDescription>
-              {role === "ADMIN"
-                ? "Platform Admins can operate without a clinic"
-                : "Clinic Admins and Staff must belong to a clinic"}
-            </FormDescription>
-            <div className="h-5">
-              {form.formState.errors.clinicId && (
-                <p className="text-sm font-medium text-destructive">
-                  {form.formState.errors.clinicId.message}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        <FormField
+          control={form.control}
+          name="clinicId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Assigned Clinic</FormLabel>
+              <FormControl>
+                <DebouncedSelect
+                  label="Assigned Clinic"
+                  value={field.value || clinicId || "null"}
+                  onValueChange={(value) => {
+                    field.onChange(value === "null" ? null : value);
+                    handleClinicChange(value);
+                  }}
+                  disabled={
+                    isLoading || role === "ADMIN" || clinics.length === 0
+                  }
+                  options={[
+                    { value: "null", label: "None (System User)" },
+                    ...clinics
+                      .filter((clinic) => clinic.isActive)
+                      .map((clinic) => ({
+                        value: clinic.id,
+                        label: clinic.name,
+                      })),
+                  ]}
+                />
+              </FormControl>
+              <FormDescription>
+                {role === "ADMIN"
+                  ? "System admins are not assigned to a specific clinic"
+                  : "Select the clinic this user belongs to"}
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -367,7 +381,7 @@ export function AdminEditUserForm({
               <div className="space-y-0.5">
                 <FormLabel className="text-base">Active Status</FormLabel>
                 <FormDescription>
-                  Inactive users cannot login to the system
+                  When inactive, user cannot log in to the system
                 </FormDescription>
               </div>
               <FormControl>
@@ -381,18 +395,21 @@ export function AdminEditUserForm({
           )}
         />
 
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="flex justify-between pt-4">
           <Button
-            type="button"
             variant="outline"
             onClick={onClose}
+            type="button"
             disabled={isLoading}
           >
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading ? (
-              <LoadingSpinner size="sm" text="Saving..." />
+              <>
+                <LoadingSpinner className="mr-2" size="sm" />
+                Saving...
+              </>
             ) : (
               "Save Changes"
             )}

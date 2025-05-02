@@ -29,26 +29,41 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 
-// Define validation schema
-const ownerSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z
-    .union([z.string().email("Invalid email format"), z.string().length(0)])
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  phone: z
-    .string()
-    .regex(/^[0-9+\-\s()]*$/, "Invalid phone number format")
-    .min(1, "Phone number is required"),
-  address: z
-    .string()
-    .max(500, "Address must be less than 500 characters")
-    .optional(),
-  allowAutomatedReminders: z.boolean(),
-});
+// Define validation schema creator with hard-coded fallbacks
+const createOwnerSchema = (errorMessages: Record<string, string>) =>
+  z.object({
+    firstName: z
+      .string()
+      .min(1, errorMessages.firstNameRequired || "First name is required"),
+    lastName: z
+      .string()
+      .min(1, errorMessages.lastNameRequired || "Last name is required"),
+    email: z
+      .union([
+        z.string().email(errorMessages.invalidEmail || "Invalid email format"),
+        z.string().length(0),
+      ])
+      .optional()
+      .transform((val) => (val === "" ? undefined : val)),
+    phone: z
+      .string()
+      .regex(
+        /^[0-9+\-\s()]*$/,
+        errorMessages.invalidPhone || "Invalid phone number format"
+      )
+      .min(1, errorMessages.phoneRequired || "Phone number is required"),
+    address: z
+      .string()
+      .max(
+        500,
+        errorMessages.addressTooLong ||
+          "Address must be less than 500 characters"
+      )
+      .optional(),
+    allowAutomatedReminders: z.boolean(),
+  });
 
-export type OwnerFormValues = z.infer<typeof ownerSchema>;
+export type OwnerFormValues = z.infer<ReturnType<typeof createOwnerSchema>>;
 
 interface OwnerFormProps {
   initialData?: Partial<OwnerFormValues>;
@@ -69,6 +84,16 @@ export function OwnerForm({
   const clinicCanSendReminders = useAuthStore(
     (state) => state.user?.clinic?.canSendReminders ?? false
   );
+
+  // Create validation schema with error messages
+  const ownerSchema = createOwnerSchema({
+    firstNameRequired: "First name is required",
+    lastNameRequired: "Last name is required",
+    invalidEmail: "Invalid email format",
+    invalidPhone: "Invalid phone number format",
+    phoneRequired: "Phone number is required",
+    addressTooLong: "Address must be less than 500 characters",
+  });
 
   const form = useForm<OwnerFormValues>({
     resolver: zodResolver(ownerSchema),
@@ -113,7 +138,7 @@ export function OwnerForm({
                 First Name
               </FormLabel>
               <FormControl>
-                <Input placeholder="John" {...field} />
+                <Input placeholder="Mohammad" {...field} />
               </FormControl>
               <FormMessage className="text-sm" />
             </FormItem>
@@ -130,7 +155,7 @@ export function OwnerForm({
                 Last Name
               </FormLabel>
               <FormControl>
-                <Input placeholder="Doe" {...field} />
+                <Input placeholder="Ahmad" {...field} />
               </FormControl>
               <FormMessage className="text-sm" />
             </FormItem>
@@ -144,7 +169,7 @@ export function OwnerForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                Email (Optional)
+                Email
               </FormLabel>
               <FormControl>
                 <Input
@@ -173,7 +198,7 @@ export function OwnerForm({
                 Phone Number <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input placeholder="+1 (555) 123-4567" {...field} />
+                <Input placeholder="07xx xxx xxx" {...field} />
               </FormControl>
               <FormMessage className="text-sm" />
             </FormItem>
@@ -187,11 +212,11 @@ export function OwnerForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Address (Optional)
+                Address
               </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Enter owner address..."
+                  placeholder="Enter client's address"
                   {...field}
                   className="resize-none min-h-[80px]"
                 />
@@ -224,8 +249,8 @@ export function OwnerForm({
                 </FormLabel>
                 <FormDescription className="text-sm text-muted-foreground">
                   {clinicCanSendReminders
-                    ? "Allow this owner to receive automated reminders (if enabled for the specific visit)."
-                    : "Automated reminders are currently disabled for this clinic's subscription plan."}
+                    ? "Allow sending automated appointment reminders to this client via email or SMS"
+                    : "Reminders are disabled for your clinic. Contact admin to enable."}
                 </FormDescription>
               </div>
               <FormMessage className="text-sm" />
@@ -251,16 +276,11 @@ export function OwnerForm({
               className="flex items-center gap-2"
             >
               {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  Save Owner
-                </>
+                <Save className="h-4 w-4" />
               )}
+              Save
             </Button>
           </div>
         )}

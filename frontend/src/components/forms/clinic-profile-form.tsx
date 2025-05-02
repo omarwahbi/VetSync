@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -15,6 +16,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuthStore } from "@/store/auth";
 
 // Define validation schema
 const clinicProfileSchema = z.object({
@@ -24,12 +33,18 @@ const clinicProfileSchema = z.object({
     .string()
     .regex(/^[0-9+\-\s()]*$/, "Invalid phone number format")
     .min(1, "Phone number is required"),
+  timezone: z.string().optional(),
 });
 
 export type ClinicProfileFormValues = z.infer<typeof clinicProfileSchema>;
 
 interface ClinicProfileFormProps {
-  initialData?: ClinicProfileFormValues;
+  initialData?: {
+    name: string;
+    address: string;
+    phone: string;
+    timezone?: string;
+  };
   onSave: (data: ClinicProfileFormValues) => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -41,12 +56,18 @@ export function ClinicProfileForm({
   onCancel,
   isLoading = false,
 }: ClinicProfileFormProps) {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === "ADMIN";
+  const isClinicAdmin = user?.role === "CLINIC_ADMIN";
+  const canEditTimezone = isAdmin || isClinicAdmin;
+
   const form = useForm<ClinicProfileFormValues>({
     resolver: zodResolver(clinicProfileSchema),
     defaultValues: {
       name: initialData?.name || "",
       address: initialData?.address || "",
       phone: initialData?.phone || "",
+      timezone: initialData?.timezone || "UTC",
     },
   });
 
@@ -125,6 +146,64 @@ export function ClinicProfileForm({
             </FormItem>
           )}
         />
+
+        {/* Show timezone field for ADMIN and CLINIC_ADMIN users */}
+        {canEditTimezone && (
+          <FormField
+            control={form.control}
+            name="timezone"
+            render={({
+              field,
+            }: {
+              field: ControllerRenderProps<ClinicProfileFormValues, "timezone">;
+            }) => (
+              <FormItem>
+                <FormLabel>Clinic Timezone</FormLabel>
+                <Select
+                  defaultValue={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <FormControl>
+                    <SelectTrigger className="">
+                      <SelectValue placeholder="Select timezone" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="">
+                    <SelectItem className="" value="UTC">
+                      UTC
+                    </SelectItem>
+                    <SelectItem className="" value="America/New_York">
+                      America/New_York (UTC-5/4)
+                    </SelectItem>
+                    <SelectItem className="" value="America/Los_Angeles">
+                      America/Los_Angeles (UTC-8/7)
+                    </SelectItem>
+                    <SelectItem className="" value="Europe/London">
+                      Europe/London (UTC+0/1)
+                    </SelectItem>
+                    <SelectItem className="" value="Asia/Dubai">
+                      Asia/Dubai (UTC+4)
+                    </SelectItem>
+                    <SelectItem className="" value="Asia/Baghdad">
+                      Asia/Baghdad (UTC+3)
+                    </SelectItem>
+                    <SelectItem className="" value="Asia/Tokyo">
+                      Asia/Tokyo (UTC+9)
+                    </SelectItem>
+                    <SelectItem className="" value="Australia/Sydney">
+                      Australia/Sydney (UTC+10/11)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Determines the clinic&apos;s operational &apos;day&apos; for
+                  stats/reminders.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <div className="flex justify-end gap-2 pt-4">
           <Button

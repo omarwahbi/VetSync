@@ -394,10 +394,10 @@ export default function PetDetailsPage() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 rtl:space-x-reverse">
           <Button variant="outline" size="sm" asChild>
             <Link href="/pets">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ChevronLeft className="h-4 w-4 me-1" />
               Back to Pets
             </Link>
           </Button>
@@ -410,23 +410,23 @@ export default function PetDetailsPage() {
           <CardContent className="space-y-6">
             <div className="space-y-4">
               <div className="flex items-center">
-                <PawPrint className="h-5 w-5 mr-2 text-muted-foreground" />
+                <PawPrint className="h-5 w-5 me-2 text-muted-foreground" />
                 <Skeleton className="h-5 w-48" />
               </div>
               <div className="flex items-center">
-                <User className="h-5 w-5 mr-2 text-muted-foreground" />
+                <User className="h-5 w-5 me-2 text-muted-foreground" />
                 <Skeleton className="h-5 w-40" />
               </div>
               <div className="flex items-center">
-                <Diamond className="h-5 w-5 mr-2 text-muted-foreground" />
+                <Diamond className="h-5 w-5 me-2 text-muted-foreground" />
                 <Skeleton className="h-5 w-32" />
               </div>
               <div className="flex items-center">
-                <VenetianMask className="h-5 w-5 mr-2 text-muted-foreground" />
+                <VenetianMask className="h-5 w-5 me-2 text-muted-foreground" />
                 <Skeleton className="h-5 w-32" />
               </div>
               <div className="flex items-center">
-                <Cake className="h-5 w-5 mr-2 text-muted-foreground" />
+                <Cake className="h-5 w-5 me-2 text-muted-foreground" />
                 <Skeleton className="h-5 w-32" />
               </div>
             </div>
@@ -435,7 +435,7 @@ export default function PetDetailsPage() {
 
         <Card className="bg-white dark:bg-card">
           <CardHeader className="">
-            <CardTitle className="text-2xl">Visit History</CardTitle>
+            <CardTitle className="text-2xl">Visits</CardTitle>
           </CardHeader>
           <CardContent className="">
             <Skeleton className="h-48 w-full" />
@@ -448,10 +448,10 @@ export default function PetDetailsPage() {
   if (isError || !petData) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 rtl:space-x-reverse">
           <Button variant="outline" size="sm" asChild>
             <Link href="/pets">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ChevronLeft className="h-4 w-4 me-1" />
               Back to Pets
             </Link>
           </Button>
@@ -463,11 +463,10 @@ export default function PetDetailsPage() {
           </CardHeader>
           <CardContent className="">
             <div className="text-red-500">
-              Error loading pet details:{" "}
-              {(error as Error)?.message || "Could not load pet data"}
+              Error: {(error as Error)?.message || "An error occurred"}
             </div>
             <Button variant="outline" className="mt-4" asChild>
-              <Link href="/pets">Return to Pets List</Link>
+              <Link href="/pets">Back to Pets</Link>
             </Button>
           </CardContent>
         </Card>
@@ -477,10 +476,10 @@ export default function PetDetailsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 rtl:space-x-reverse">
         <Button variant="outline" size="sm" asChild>
           <Link href="/pets">
-            <ChevronLeft className="h-4 w-4 mr-1" />
+            <ChevronLeft className="h-4 w-4 me-1" />
             Back to Pets
           </Link>
         </Button>
@@ -489,7 +488,7 @@ export default function PetDetailsPage() {
       <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl">Pet Details</CardTitle>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 rtl:space-x-reverse">
             <Button
               variant="outline"
               size="sm"
@@ -497,7 +496,7 @@ export default function PetDetailsPage() {
               onClick={() => setIsPetDialogOpen(true)}
             >
               <Edit className="h-4 w-4" />
-              Edit Pet
+              Edit
             </Button>
             <AlertDialog
               open={isDeleteDialogOpen}
@@ -510,12 +509,12 @@ export default function PetDetailsPage() {
                   className="flex items-center gap-1"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Delete Pet
+                  Delete
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete Pet</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete
                     pet <span className="font-medium">{petData?.name}</span> and
@@ -531,8 +530,8 @@ export default function PetDetailsPage() {
                   >
                     {isDeletingPet ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deleting...
+                        <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                        Please wait...
                       </>
                     ) : (
                       "Delete"
@@ -546,13 +545,13 @@ export default function PetDetailsPage() {
         <CardContent className="space-y-6">
           <div className="space-y-4">
             <div className="flex items-center">
-              <PawPrint className="h-5 w-5 mr-2 text-muted-foreground" />
+              <PawPrint className="h-5 w-5 me-2 text-muted-foreground" />
               <span className="font-medium text-lg">{petData.name}</span>
             </div>
 
             <div className="flex items-center">
-              <User className="h-5 w-5 mr-2 text-muted-foreground" />
-              <span className="font-medium mr-2">Owner:</span>
+              <User className="h-5 w-5 me-2 text-muted-foreground" />
+              <span className="font-medium me-2">Owner</span>
               <Link
                 href={`/owners/${petData.owner.id}`}
                 className="text-primary hover:underline"
@@ -562,15 +561,15 @@ export default function PetDetailsPage() {
             </div>
 
             <div className="flex items-center">
-              <Diamond className="h-5 w-5 mr-2 text-muted-foreground" />
-              <span className="font-medium mr-2">Species:</span>
+              <Diamond className="h-5 w-5 me-2 text-muted-foreground" />
+              <span className="font-medium me-2">Species</span>
               <span>{petData.species}</span>
             </div>
 
             {petData.breed && (
               <div className="flex items-center">
-                <VenetianMask className="h-5 w-5 mr-2 text-muted-foreground" />
-                <span className="font-medium mr-2">Breed:</span>
+                <VenetianMask className="h-5 w-5 me-2 text-muted-foreground" />
+                <span className="font-medium me-2">Breed</span>
                 <span>{petData.breed}</span>
               </div>
             )}
@@ -586,7 +585,7 @@ export default function PetDetailsPage() {
 
             {petData.gender && (
               <div className="flex items-center">
-                <span className="font-medium mr-2">Gender:</span>
+                <span className="font-medium me-2">Gender</span>
                 <span>
                   {petData.gender.charAt(0).toUpperCase() +
                     petData.gender.slice(1)}
@@ -596,16 +595,16 @@ export default function PetDetailsPage() {
 
             {petData.notes && (
               <div className="mt-4">
-                <span className="font-medium">Notes:</span>
+                <span className="font-medium">Notes</span>
                 <p className="mt-1 text-muted-foreground">{petData.notes}</p>
               </div>
             )}
 
             {/* Audit Information */}
             <div className="text-xs text-muted-foreground mt-4">
-              <p>Created: {formatDisplayDateTime(petData.createdAt)}</p>
+              <p>Created at {formatDisplayDateTime(petData.createdAt)}</p>
               {petData.updatedAt && petData.updatedAt !== petData.createdAt && (
-                <p>Last updated: {formatDisplayDateTime(petData.updatedAt)}</p>
+                <p>Updated at {formatDisplayDateTime(petData.updatedAt)}</p>
               )}
             </div>
           </div>
@@ -615,15 +614,15 @@ export default function PetDetailsPage() {
       <Card className="bg-white dark:bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl flex items-center">
-            <ClipboardList className="h-5 w-5 mr-2 text-muted-foreground" />
-            Visit History
+            <ClipboardList className="h-5 w-5 me-2 text-muted-foreground" />
+            Visits
           </CardTitle>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 rtl:space-x-reverse">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <SlidersHorizontal className="h-4 w-4 mr-2" />
-                  Columns
+                  <SlidersHorizontal className="h-4 w-4 me-2" />
+                  Actions
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
@@ -632,7 +631,7 @@ export default function PetDetailsPage() {
                   onClick={() => toggleColumn("type")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.type && (
                       <Check className="h-3 w-3" />
                     )}
@@ -644,7 +643,7 @@ export default function PetDetailsPage() {
                   onClick={() => toggleColumn("notes")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.notes && (
                       <Check className="h-3 w-3" />
                     )}
@@ -656,7 +655,7 @@ export default function PetDetailsPage() {
                   onClick={() => toggleColumn("nextReminder")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.nextReminder && (
                       <Check className="h-3 w-3" />
                     )}
@@ -668,7 +667,7 @@ export default function PetDetailsPage() {
                   onClick={() => toggleColumn("reminderStatus")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.reminderStatus && (
                       <Check className="h-3 w-3" />
                     )}
@@ -680,7 +679,7 @@ export default function PetDetailsPage() {
                   onClick={() => toggleColumn("price")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.price && (
                       <Check className="h-3 w-3" />
                     )}
@@ -692,7 +691,7 @@ export default function PetDetailsPage() {
                   onClick={() => toggleColumn("createdBy")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.createdBy && (
                       <Check className="h-3 w-3" />
                     )}
@@ -704,7 +703,7 @@ export default function PetDetailsPage() {
                   onClick={() => toggleColumn("updatedBy")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.updatedBy && (
                       <Check className="h-3 w-3" />
                     )}
@@ -716,7 +715,7 @@ export default function PetDetailsPage() {
                   onClick={() => toggleColumn("actions")}
                   inset={false}
                 >
-                  <div className="mr-2 h-4 w-4 flex items-center justify-center">
+                  <div className="me-2 h-4 w-4 flex items-center justify-center">
                     {visitColumnsVisibility.actions && (
                       <Check className="h-3 w-3" />
                     )}
@@ -731,14 +730,14 @@ export default function PetDetailsPage() {
               onClick={() => setIsVisitDialogOpen(true)}
             >
               <PlusCircle className="h-4 w-4" />
-              Add New Visit
+              Add Visit
             </Button>
           </div>
         </CardHeader>
         <CardContent className="">
           {petData.visits && petData.visits.length > 0 ? (
             <Table>
-              <TableCaption>Visit history for {petData.name}</TableCaption>
+              <TableCaption>Visits for {petData.name}</TableCaption>
               <TableHeader>
                 <TableRow>
                   <TableHead className="font-medium">Date</TableHead>
@@ -752,7 +751,9 @@ export default function PetDetailsPage() {
                     <TableHead className="font-medium">Next Reminder</TableHead>
                   )}
                   {visitColumnsVisibility.reminderStatus && (
-                    <TableHead className="font-medium">Reminder</TableHead>
+                    <TableHead className="font-medium">
+                      Reminder Status
+                    </TableHead>
                   )}
                   {visitColumnsVisibility.price && (
                     <TableHead className="font-medium">Price</TableHead>
@@ -764,7 +765,7 @@ export default function PetDetailsPage() {
                     <TableHead className="font-medium">Updated By</TableHead>
                   )}
                   {visitColumnsVisibility.actions && (
-                    <TableHead className="text-right font-medium">
+                    <TableHead className="text-end font-medium">
                       Actions
                     </TableHead>
                   )}
@@ -800,13 +801,13 @@ export default function PetDetailsPage() {
                       <TableCell>
                         {visit.isReminderEnabled ? (
                           <span className="flex items-center text-green-600">
-                            <Bell className="h-4 w-4 mr-1" />
-                            On
+                            <Bell className="h-4 w-4 me-1" />
+                            Active
                           </span>
                         ) : (
                           <span className="flex items-center text-gray-500">
-                            <BellOff className="h-4 w-4 mr-1" />
-                            Off
+                            <BellOff className="h-4 w-4 me-1" />
+                            Inactive
                           </span>
                         )}
                       </TableCell>
@@ -821,7 +822,7 @@ export default function PetDetailsPage() {
                         {visit.createdBy
                           ? `${visit.createdBy.firstName || ""} ${
                               visit.createdBy.lastName || ""
-                            }`.trim() || "Unknown"
+                            }`.trim() || "System"
                           : "System"}
                       </TableCell>
                     )}
@@ -830,12 +831,12 @@ export default function PetDetailsPage() {
                         {visit.updatedBy
                           ? `${visit.updatedBy.firstName || ""} ${
                               visit.updatedBy.lastName || ""
-                            }`.trim() || "Unknown"
+                            }`.trim() || "System"
                           : "System"}
                       </TableCell>
                     )}
                     {visitColumnsVisibility.actions && (
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -843,7 +844,7 @@ export default function PetDetailsPage() {
                               size="icon"
                               className="h-8 w-8 p-0"
                             >
-                              <span className="sr-only">Open menu</span>
+                              <span className="sr-only">View Details</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -856,8 +857,8 @@ export default function PetDetailsPage() {
                                 setIsVisitEditDialogOpen(true);
                               }}
                             >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Visit
+                              <Edit className="me-2 h-4 w-4" />
+                              Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="cursor-pointer text-red-600"
@@ -867,8 +868,8 @@ export default function PetDetailsPage() {
                                 setDeletingVisit(visit);
                               }}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Visit
+                              <Trash2 className="me-2 h-4 w-4" />
+                              Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -881,15 +882,15 @@ export default function PetDetailsPage() {
           ) : (
             <div className="py-8 text-center text-muted-foreground">
               <ClipboardList className="h-10 w-10 mx-auto mb-4 opacity-50" />
-              <p>No visits recorded for this pet.</p>
+              <p>No visits found</p>
               <Button
                 size="sm"
                 variant="outline"
                 className="mt-4"
                 onClick={() => setIsVisitDialogOpen(true)}
               >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Schedule First Visit
+                <PlusCircle className="h-4 w-4 me-2" />
+                Add Visit
               </Button>
             </div>
           )}
@@ -935,7 +936,7 @@ export default function PetDetailsPage() {
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>Add New Visit</DialogTitle>
+            <DialogTitle>Add Visit</DialogTitle>
           </DialogHeader>
           {petData && (
             <VisitForm
@@ -1001,15 +1002,13 @@ export default function PetDetailsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Visit</AlertDialogTitle>
             <AlertDialogDescription>
-              This action will permanently delete this visit record for{" "}
-              <span className="font-medium">{petData?.name}</span> on{" "}
-              <span className="font-medium">
-                {deletingVisit
-                  ? formatDisplayDate(deletingVisit.visitDate)
-                  : ""}
-              </span>
+              This action cannot be undone. This will permanently delete the
+              visit for {petData?.name}
+              {deletingVisit
+                ? ` on ${formatDisplayDate(deletingVisit.visitDate)}`
+                : ""}
               .
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1020,7 +1019,7 @@ export default function PetDetailsPage() {
               className="bg-red-600 text-white hover:bg-red-700"
               disabled={isDeletingVisit}
             >
-              {isDeletingVisit ? "Deleting..." : "Delete"}
+              {isDeletingVisit ? "Please wait..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

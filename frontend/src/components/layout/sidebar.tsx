@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { useRouter } from "next/navigation";
@@ -12,7 +14,6 @@ import {
   Calendar,
   Building2,
   Settings,
-  Shield,
   UserCog,
   UserPlus,
   CalendarCheck2,
@@ -20,34 +21,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import axiosInstance from "@/lib/axios";
+import React from "react";
 
-const navItems = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Visits", href: "/visits", icon: Calendar },
-  { name: "Owners", href: "/owners", icon: Users },
-  { name: "Pets", href: "/pets", icon: PawPrint },
-  {
-    name: "Clinic Profile",
-    href: "/clinic-profile",
-    icon: Building2,
-  },
-  {
-    name: "My Profile",
-    href: "/profile",
-    icon: UserCog,
-  },
-];
+// Define route paths
+const routePaths = {
+  dashboard: "/dashboard",
+  visits: "/visits",
+  owners: "/owners",
+  pets: "/pets",
+  clinicProfile: "/clinic-profile",
+  profile: "/profile",
+  adminClinics: "/admin/clinics",
+  adminUsers: "/admin/users",
+  adminSettings: "/admin/settings",
+  manageUsers: "/manage-users",
+  dueVisits: "/due-visits",
+};
 
-const adminNavItems = [
-  { name: "Manage Clinics", href: "/admin/clinics", icon: Building2 },
-  { name: "Manage Users", href: "/admin/users", icon: UserPlus },
-  { name: "Admin Settings", href: "/admin/settings", icon: Settings },
-];
-
-const clinicAdminItems = [
-  { name: "Manage Users", href: "/manage-users", icon: UserPlus },
-];
-
+// The main Sidebar component
 export function Sidebar() {
   const pathname = usePathname();
   const { logout, user } = useAuthStore();
@@ -55,91 +46,134 @@ export function Sidebar() {
   const userRole = user?.role;
   const isAdmin = userRole === "ADMIN";
   const isClinicAdmin = userRole === "CLINIC_ADMIN";
+  const { theme } = useTheme();
 
+  // Logout handler
   const handleLogout = async () => {
     try {
-      // Call the logout endpoint to invalidate the refresh token
       await axiosInstance.post("/auth/logout");
     } catch (error) {
       console.error("Error during logout:", error);
     } finally {
-      // Clear local state regardless of server response
       logout();
       router.push("/login");
     }
   };
 
+  // Check if a path is active
+  const isPathActive = (path: string) => {
+    return pathname === path || pathname?.startsWith(`${path}/`);
+  };
+
+  // Define nav items
+  const navItems = [
+    {
+      name: "Dashboard",
+      href: routePaths.dashboard,
+      icon: LayoutDashboard,
+    },
+    {
+      name: "Visits",
+      href: routePaths.visits,
+      icon: Calendar,
+    },
+    {
+      name: "Owners",
+      href: routePaths.owners,
+      icon: Users,
+    },
+    {
+      name: "Pets",
+      href: routePaths.pets,
+      icon: PawPrint,
+    },
+    {
+      name: "Clinic Profile",
+      href: routePaths.clinicProfile,
+      icon: Building2,
+    },
+    {
+      name: "My Profile",
+      href: routePaths.profile,
+      icon: UserCog,
+    },
+  ];
+
+  const adminNavItems = [
+    {
+      name: "Manage Clinics",
+      href: routePaths.adminClinics,
+      icon: Building2,
+    },
+    {
+      name: "Manage Users",
+      href: routePaths.adminUsers,
+      icon: UserPlus,
+    },
+    {
+      name: "System Settings",
+      href: routePaths.adminSettings,
+      icon: Settings,
+    },
+  ];
+
+  const clinicAdminItems = [
+    {
+      name: "Manage Users",
+      href: routePaths.manageUsers,
+      icon: UserPlus,
+    },
+  ];
+
   return (
     <div className="h-full w-64 border-r border-border bg-white dark:bg-slate-950 flex flex-col">
-      <div className="py-6 px-4 border-b">
-        <h1 className="text-xl font-bold">Vet Clinic</h1>
+      <div className="py-4 px-4 border-b flex items-center justify-center">
+        <Link href={routePaths.dashboard} className="flex items-center">
+          <Image
+            src={theme === "dark" ? "/logo-dark.svg" : "/logo.svg"}
+            alt="VetSync"
+            width={150}
+            height={40}
+            priority
+          />
+        </Link>
       </div>
 
       <nav className="space-y-1 flex-1 p-4">
-        {/* Conditionally render Dashboard for non-STAFF users, or always render if needed */}
-        {userRole !== "STAFF" ? (
-          <Link href="/dashboard">
-            <Button
-              variant={
-                pathname === "/dashboard" || pathname?.startsWith("/dashboard/")
-                  ? "secondary"
-                  : "ghost"
-              }
-              size="default"
-              className={cn(
-                "w-full justify-start gap-2 pl-2 mb-1",
-                pathname === "/dashboard" || pathname?.startsWith("/dashboard/")
-                  ? "bg-secondary"
-                  : ""
-              )}
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </Button>
-          </Link>
-        ) : (
-          <Link href="/dashboard">
-            <Button
-              variant={
-                pathname === "/dashboard" || pathname?.startsWith("/dashboard/")
-                  ? "secondary"
-                  : "ghost"
-              }
-              size="default"
-              className={cn(
-                "w-full justify-start gap-2 pl-2 mb-1",
-                pathname === "/dashboard" || pathname?.startsWith("/dashboard/")
-                  ? "bg-secondary"
-                  : ""
-              )}
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </Button>
-          </Link>
-        )}
-
-        {/* Due Visits link - visible to all users */}
-        <Link href="/due-visits">
+        {/* Dashboard link */}
+        <Link href={routePaths.dashboard}>
           <Button
-            variant={pathname === "/due-visits" ? "secondary" : "ghost"}
+            variant={isPathActive(routePaths.dashboard) ? "secondary" : "ghost"}
             size="default"
             className={cn(
               "w-full justify-start gap-2 pl-2 mb-1",
-              pathname === "/due-visits" ? "bg-secondary" : ""
+              isPathActive(routePaths.dashboard) ? "bg-secondary" : ""
+            )}
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Dashboard
+          </Button>
+        </Link>
+
+        {/* Due Visits link - visible to all users */}
+        <Link href={routePaths.dueVisits}>
+          <Button
+            variant={isPathActive(routePaths.dueVisits) ? "secondary" : "ghost"}
+            size="default"
+            className={cn(
+              "w-full justify-start gap-2 pl-2 mb-1",
+              isPathActive(routePaths.dueVisits) ? "bg-secondary" : ""
             )}
           >
             <CalendarCheck2 className="h-4 w-4" />
-            Visits Due Today
+            Due Today
           </Button>
         </Link>
 
         {/* Common nav items for all users */}
         {navItems.slice(1).map((item) => {
-          const isActive =
-            pathname === item.href || pathname?.startsWith(`${item.href}/`);
+          const isActive = isPathActive(item.href);
           const Icon = item.icon;
-
           return (
             <Link key={item.href} href={item.href}>
               <Button
@@ -157,73 +191,63 @@ export function Sidebar() {
           );
         })}
 
-        {/* Clinic Admin Section - only visible for CLINIC_ADMIN users */}
-        {isClinicAdmin && (
+        {/* Admin specific nav items */}
+        {isAdmin && (
           <>
-            <div className="pt-6 mt-4 border-t">
-              <div className="flex items-center gap-2 px-2 py-3 mb-2 text-sm font-medium text-muted-foreground">
-                <UserCog className="h-4 w-4" />
-                Clinic Management
-              </div>
-
-              {clinicAdminItems.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  pathname?.startsWith(`${item.href}/`);
-                const Icon = item.icon;
-
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      size="default"
-                      className={cn(
-                        "w-full justify-start gap-2 pl-2 mb-1",
-                        isActive ? "bg-secondary" : ""
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.name}
-                    </Button>
-                  </Link>
-                );
-              })}
+            <div className="pt-2 pb-2">
+              <p className="text-xs font-medium text-muted-foreground px-2 py-1">
+                Administration
+              </p>
             </div>
+            {adminNavItems.map((item) => {
+              const isActive = isPathActive(item.href);
+              const Icon = item.icon;
+              return (
+                <Link key={item.href} href={item.href}>
+                  <Button
+                    variant={isActive ? "secondary" : "ghost"}
+                    size="default"
+                    className={cn(
+                      "w-full justify-start gap-2 pl-2 mb-1",
+                      isActive ? "bg-secondary" : ""
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.name}
+                  </Button>
+                </Link>
+              );
+            })}
           </>
         )}
 
-        {/* Admin Section - only visible for ADMIN users */}
-        {isAdmin && (
+        {/* Clinic Admin specific nav items */}
+        {isClinicAdmin && (
           <>
-            <div className="pt-6 mt-4 border-t">
-              <div className="flex items-center gap-2 px-2 py-3 mb-2 text-sm font-medium text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                Platform Admin
-              </div>
-
-              {adminNavItems.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  pathname?.startsWith(`${item.href}/`);
-                const Icon = item.icon;
-
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      size="default"
-                      className={cn(
-                        "w-full justify-start gap-2 pl-2 mb-1",
-                        isActive ? "bg-secondary" : ""
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.name}
-                    </Button>
-                  </Link>
-                );
-              })}
+            <div className="pt-2 pb-2">
+              <p className="text-xs font-medium text-muted-foreground px-2 py-1">
+                Administration
+              </p>
             </div>
+            {clinicAdminItems.map((item) => {
+              const isActive = isPathActive(item.href);
+              const Icon = item.icon;
+              return (
+                <Link key={item.href} href={item.href}>
+                  <Button
+                    variant={isActive ? "secondary" : "ghost"}
+                    size="default"
+                    className={cn(
+                      "w-full justify-start gap-2 pl-2 mb-1",
+                      isActive ? "bg-secondary" : ""
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.name}
+                  </Button>
+                </Link>
+              );
+            })}
           </>
         )}
       </nav>
@@ -232,7 +256,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           size="default"
-          className="w-full justify-start gap-2 pl-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+          className="w-full justify-start gap-2 pl-2 text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-950"
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4" />

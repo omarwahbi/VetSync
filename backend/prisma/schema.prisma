@@ -18,6 +18,7 @@ model Clinic {
   name                  String    @unique // Clinic names should be unique
   address               String? // Optional address
   phone                 String? // Optional phone
+  timezone              String    @default("UTC") // Default timezone for the clinic's operations
   isActive              Boolean   @default(false) // Subscription status
   canSendReminders      Boolean   @default(false) // Explicit flag for reminder feature access
   subscriptionStartDate DateTime? // Optional: Date the current paid term started

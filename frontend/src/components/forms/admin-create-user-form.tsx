@@ -5,6 +5,7 @@ import { useForm, ControllerRenderProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Mail, Lock, User, Building2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +59,9 @@ export function AdminCreateUserForm({
   isLoading,
 }: AdminCreateUserFormProps) {
   log("Component rendering");
+
+  // Get translations
+  const t = useTranslations("AdminCreateUser");
 
   // Set up form with default values
   const form = useForm<CreateUserFormValues>({
@@ -139,19 +143,19 @@ export function AdminCreateUserForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-1">
                 <Mail className="h-4 w-4" />
-                <span className="text-sm font-medium">Email</span>
+                <span className="text-sm font-medium">{t("email")}</span>
               </FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="user@clinic.com"
+                  placeholder={t("emailPlaceholder")}
                   autoComplete="email"
                   className="w-full"
                   {...field}
                 />
               </FormControl>
               <FormDescription className="text-xs text-muted-foreground">
-                This email will be used for login
+                {t("emailDescription")}
               </FormDescription>
               <FormMessage className="text-xs text-red-500" />
             </FormItem>
@@ -170,19 +174,19 @@ export function AdminCreateUserForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-1">
                 <Lock className="h-4 w-4" />
-                <span className="text-sm font-medium">Password</span>
+                <span className="text-sm font-medium">{t("password")}</span>
               </FormLabel>
               <FormControl>
                 <Input
                   type="password"
-                  placeholder="********"
+                  placeholder={t("passwordPlaceholder")}
                   autoComplete="new-password"
                   className="w-full"
                   {...field}
                 />
               </FormControl>
               <FormDescription className="text-xs text-muted-foreground">
-                Minimum 8 characters long
+                {t("passwordDescription")}
               </FormDescription>
               <FormMessage className="text-xs text-red-500" />
             </FormItem>
@@ -202,12 +206,12 @@ export function AdminCreateUserForm({
               <FormItem className="space-y-2">
                 <FormLabel className="flex items-center gap-1">
                   <User className="h-4 w-4" />
-                  <span className="text-sm font-medium">First Name</span>
+                  <span className="text-sm font-medium">{t("firstName")}</span>
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="text"
-                    placeholder="First name"
+                    placeholder={t("firstNamePlaceholder")}
                     className="w-full"
                     {...field}
                   />
@@ -227,12 +231,12 @@ export function AdminCreateUserForm({
             }) => (
               <FormItem className="space-y-2">
                 <FormLabel className="flex items-center gap-1">
-                  <span className="text-sm font-medium">Last Name</span>
+                  <span className="text-sm font-medium">{t("lastName")}</span>
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="text"
-                    placeholder="Last name"
+                    placeholder={t("lastNamePlaceholder")}
                     className="w-full"
                     {...field}
                   />
@@ -255,7 +259,9 @@ export function AdminCreateUserForm({
             <FormItem className="flex flex-col space-y-2">
               <FormLabel className="flex items-center gap-1">
                 <Building2 className="h-4 w-4" />
-                <span className="text-sm font-medium">Assign to Clinic</span>
+                <span className="text-sm font-medium">
+                  {t("assignToClinic")}
+                </span>
               </FormLabel>
 
               <DebouncedSelect
@@ -264,12 +270,12 @@ export function AdminCreateUserForm({
                 onValueChange={handleClinicChange}
                 options={clinicOptions}
                 disabled={isLoading}
-                placeholder="Select a clinic"
+                placeholder={t("selectClinic")}
                 debounceMs={100}
               />
 
               <FormDescription className="text-xs text-muted-foreground">
-                The user will be assigned to this clinic as a staff member
+                {t("clinicAssignmentDescription")}
               </FormDescription>
               <FormMessage className="text-xs text-red-500" />
             </FormItem>
@@ -278,7 +284,7 @@ export function AdminCreateUserForm({
 
         <div className="flex justify-end gap-2">
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create User"}
+            {isLoading ? t("creating") : t("createUser")}
           </Button>
         </div>
       </form>

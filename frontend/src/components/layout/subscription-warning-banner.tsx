@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { AlertCircle } from "lucide-react";
 
 interface SubscriptionWarningBannerProps {
   daysRemaining: number;
@@ -13,29 +13,31 @@ export function SubscriptionWarningBanner({
   daysRemaining,
   endDate,
 }: SubscriptionWarningBannerProps) {
-  const formattedEndDate = format(endDate, "MMMM d, yyyy"); // Example: January 15, 2024
-  let title = "Subscription Alert";
-  let message = "";
-
-  if (daysRemaining <= 0) {
-    title = "Subscription Expired/Expiring Today!";
-    message = `Your clinic's subscription ends or ended today (${formattedEndDate}). Please contact support to renew.`;
-  } else if (daysRemaining === 1) {
-    title = "Subscription Expires Tomorrow!";
-    message = `Your clinic's subscription expires tomorrow, ${formattedEndDate}.`;
-  } else {
-    title = `Subscription Expiring Soon!`;
-    message = `Your clinic's subscription expires in ${daysRemaining} days on ${formattedEndDate}.`;
-  }
-
   return (
-    <Alert
-      variant="destructive"
-      className="rounded-none border-l-0 border-r-0 border-t-0 mb-0"
-    >
-      <AlertTriangle className="h-4 w-4" />
-      <AlertTitle>{title}</AlertTitle>
-      <AlertDescription>{message}</AlertDescription>
-    </Alert>
+    <div className="bg-red-500 text-white py-2 px-4 text-center text-sm">
+      <div className="container mx-auto flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          <span>
+            {daysRemaining === 0
+              ? "Your subscription expires today!"
+              : `Your subscription expires in ${daysRemaining} days.`}
+          </span>
+          <span className="hidden sm:inline">
+            ({format(endDate, "dd MMM yyyy")})
+          </span>
+          <span className="font-semibold ml-2">
+            Action required to maintain service.
+          </span>
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="bg-white text-red-500 hover:bg-red-50 whitespace-nowrap"
+        >
+          Renew Now
+        </Button>
+      </div>
+    </div>
   );
 }

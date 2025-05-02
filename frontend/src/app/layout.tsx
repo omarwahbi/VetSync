@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import React from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { Providers } from "./providers";
+import { ErrorBoundaryWrapper } from "@/components/ErrorBoundaryWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,18 +17,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vet Clinic App",
-  description: "Pet care management application for vet clinics",
+  title: {
+    template: "%s | VetSync",
+    default: "VetSync",
+  },
+  description: "Modern pet care management system for veterinary clinics",
+  icons: {
+    icon: [{ url: "/favicon.svg" }],
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" dir="ltr" suppressHydrationWarning>
       <head suppressHydrationWarning>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <script
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
@@ -50,11 +59,15 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`min-h-screen bg-background font-sans antialiased ${geistSans.variable} ${geistMono.variable}`}
         suppressHydrationWarning={true}
       >
-        <Providers>{children}</Providers>
-        <Toaster position="top-right" />
+        <ErrorBoundaryWrapper>
+          <Providers>
+            {children}
+            <Toaster position="top-right" />
+          </Providers>
+        </ErrorBoundaryWrapper>
       </body>
     </html>
   );

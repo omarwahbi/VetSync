@@ -143,7 +143,8 @@ export function AdminCreateClinicForm({
               <div className="space-y-1 leading-none">
                 <FormLabel>Active Status</FormLabel>
                 <FormDescription>
-                  Enable to activate this clinic immediately
+                  Enable this clinic to allow users to log in and use the
+                  system.
                 </FormDescription>
               </div>
             </FormItem>
@@ -164,7 +165,8 @@ export function AdminCreateClinicForm({
               <div className="space-y-1 leading-none">
                 <FormLabel>Enable Reminders</FormLabel>
                 <FormDescription>
-                  Allow this clinic to send automated reminders
+                  Allow this clinic to send email reminders to clients about
+                  upcoming appointments.
                 </FormDescription>
               </div>
             </FormItem>
@@ -189,7 +191,7 @@ export function AdminCreateClinicForm({
                         )}
                       >
                         {field.value ? (
-                          format(field.value, "PPP")
+                          format(field.value, "dd-MM-yyyy")
                         ) : (
                           <span>No end date</span>
                         )}
@@ -254,8 +256,8 @@ export function AdminCreateClinicForm({
           )}
         />
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" type="button" onClick={onClose}>
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>

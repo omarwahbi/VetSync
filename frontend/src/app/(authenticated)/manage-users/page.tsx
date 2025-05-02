@@ -101,7 +101,6 @@ export default function ManageUsersPage() {
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
-  const [isDeleteUserDialogOpen, setIsDeleteUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ClinicUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<ClinicUser | null>(null);
   const queryClient = useQueryClient();
@@ -139,15 +138,6 @@ export default function ManageUsersPage() {
     },
     [searchParams]
   );
-
-  // Function to clear all filters
-  const clearFilters = () => {
-    setSearchTerm("");
-    setRoleFilter("ALL");
-    setStatusFilter("ALL");
-    setPage(1);
-    router.push(pathname, { scroll: false });
-  };
 
   // Update URL when state changes
   useEffect(() => {
@@ -231,7 +221,7 @@ export default function ManageUsersPage() {
       queryClient.invalidateQueries({
         queryKey: ["clinicUsers", user?.clinicId],
       });
-      toast.success("Staff user created successfully");
+      toast.success("User created successfully");
       setIsCreateUserDialogOpen(false);
     },
     onError: (error: ApiError) => {
@@ -340,7 +330,6 @@ export default function ManageUsersPage() {
   // Handler for delete dialog
   const handleDeleteClick = (userRow: ClinicUser) => {
     setDeletingUser(userRow);
-    setIsDeleteUserDialogOpen(true);
   };
 
   // If not a clinic admin, return null (or loading/forbidden component)
@@ -354,7 +343,7 @@ export default function ManageUsersPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <UserCog className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl">Manage Clinic Staff</CardTitle>
+            <CardTitle className="text-2xl">Manage Users</CardTitle>
           </div>
           <Button
             variant="default"
@@ -363,7 +352,7 @@ export default function ManageUsersPage() {
             onClick={() => setIsCreateUserDialogOpen(true)}
           >
             <UserPlus className="h-4 w-4" />
-            Add Staff User
+            Add Staff
           </Button>
         </CardHeader>
         <CardContent>
@@ -384,7 +373,7 @@ export default function ManageUsersPage() {
             </div>
           ) : usersData?.length === 0 ? (
             <div className="py-6 text-center text-muted-foreground">
-              No users found. Add a staff user to get started.
+              No users found
             </div>
           ) : (
             <div className="rounded-md border overflow-hidden">
@@ -418,7 +407,9 @@ export default function ManageUsersPage() {
                               : "bg-blue-100 text-blue-800 hover:bg-blue-100"
                           }`}
                         >
-                          {userRow.role.replace("_", " ")}
+                          {userRow.role === "CLINIC_ADMIN"
+                            ? "CLINIC_ADMIN"
+                            : "STAFF"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -430,7 +421,7 @@ export default function ManageUsersPage() {
                               : ""
                           }
                         >
-                          {userRow.isActive ? "Active" : "Inactive"}
+                          {userRow.isActive ? "active" : "inactive"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -473,7 +464,7 @@ export default function ManageUsersPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Staff User</DialogTitle>
+            <DialogTitle>Add Staff</DialogTitle>
           </DialogHeader>
           <ClinicCreateUserForm
             onSubmit={handleCreateUser}
@@ -490,10 +481,8 @@ export default function ManageUsersPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user information and permissions
-            </DialogDescription>
+            <DialogTitle>Edit Staff</DialogTitle>
+            <DialogDescription>Edit staff member details</DialogDescription>
           </DialogHeader>
           {editingUser && (
             <ClinicEditUserForm
@@ -513,11 +502,11 @@ export default function ManageUsersPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>Delete Staff</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the user{" "}
-              <span className="font-medium">{deletingUser?.email || ""}</span>?
-              This action cannot be undone.
+              {deletingUser
+                ? `Are you sure you want to delete ${deletingUser.email}?`
+                : "Are you sure you want to delete this staff member?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

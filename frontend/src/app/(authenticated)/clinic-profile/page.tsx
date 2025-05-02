@@ -22,6 +22,7 @@ interface ClinicProfile {
   name: string;
   address: string;
   phone: string;
+  timezone: string;
   isActive: boolean;
   canSendReminders?: boolean;
   reminderMonthlyLimit?: number;
@@ -31,23 +32,6 @@ interface ClinicProfile {
   createdAt: string;
   updatedAt: string;
 }
-
-// Helper function to render reminder limits
-const renderReminderLimit = (limit?: number, canSendReminders?: boolean) => {
-  if (!canSendReminders) {
-    return <span className="text-red-600">Disabled (System)</span>;
-  }
-
-  if (limit === -1) {
-    return <span className="text-blue-600">Unlimited</span>;
-  }
-
-  if (limit === 0) {
-    return <span className="text-gray-600">Disabled (Limit)</span>;
-  }
-
-  return <span>{limit} per cycle</span>;
-};
 
 // Helper function to render usage status with visual indicators
 const renderReminderUsage = (
@@ -115,6 +99,26 @@ export default function ClinicProfilePage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const userRole = user?.role;
+
+  // Helper function to render reminder limits with translations
+  const getTranslatedReminderLimit = (
+    limit?: number,
+    canSendReminders?: boolean
+  ) => {
+    if (!canSendReminders) {
+      return <span className="text-red-600">Disabled</span>;
+    }
+
+    if (limit === -1) {
+      return <span className="text-blue-600">Unlimited</span>;
+    }
+
+    if (limit === 0) {
+      return <span className="text-gray-600">Disabled (0 limit)</span>;
+    }
+
+    return <span>{limit} per cycle</span>;
+  };
 
   // Query to fetch clinic profile
   const {
@@ -206,6 +210,32 @@ export default function ClinicProfilePage() {
     );
   }
 
+  // Edit mode
+  if (isEditing) {
+    return (
+      <div className="container py-8">
+        <Card className="bg-white dark:bg-card">
+          <CardHeader className="">
+            <CardTitle className="text-2xl">Edit Clinic Profile</CardTitle>
+          </CardHeader>
+          <CardContent className="">
+            <ClinicProfileForm
+              initialData={{
+                name: clinicProfile.name,
+                address: clinicProfile.address || "",
+                phone: clinicProfile.phone || "",
+                timezone: clinicProfile.timezone || "UTC",
+              }}
+              onSave={handleSaveProfile}
+              onCancel={handleCancelEdit}
+              isLoading={isUpdating}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-8">
       <Card className="bg-white dark:bg-card">
@@ -219,98 +249,122 @@ export default function ClinicProfilePage() {
             <Button
               variant="outline"
               size="sm"
-              className="flex items-center gap-1"
               onClick={handleEditClick}
+              className="gap-1"
             >
               <Edit className="h-4 w-4" />
               Edit Profile
             </Button>
           )}
         </CardHeader>
-        <CardContent className="">
-          {isEditing && userRole === "CLINIC_ADMIN" ? (
-            <ClinicProfileForm
-              initialData={clinicProfile}
-              onSave={handleSaveProfile}
-              onCancel={handleCancelEdit}
-              isLoading={isUpdating}
-            />
-          ) : (
-            <div className="space-y-6">
-              <div className="">
-                <h3 className="text-lg font-medium">Clinic Name</h3>
-                <p className="text-gray-700">{clinicProfile.name}</p>
-              </div>
-              <div className="">
-                <h3 className="text-lg font-medium">Address</h3>
-                <p className="text-gray-700 whitespace-pre-line">
-                  {clinicProfile.address}
-                </p>
-              </div>
-              <div className="">
-                <h3 className="text-lg font-medium">Phone Number</h3>
-                <p className="text-gray-700">{clinicProfile.phone}</p>
-              </div>
-
-              {/* Reminder Usage Section */}
-              <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
-                <h3 className="text-lg font-medium mb-4">Reminder Usage</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">
-                      Monthly Reminder Limit:
-                    </p>
-                    <div className="font-medium">
-                      {renderReminderLimit(
-                        clinicProfile.reminderMonthlyLimit,
-                        clinicProfile.canSendReminders
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">
-                      Reminders Sent This Cycle:
-                    </p>
-                    <div>
-                      {renderReminderUsage(
-                        clinicProfile.reminderSentThisCycle,
-                        clinicProfile.reminderMonthlyLimit,
-                        clinicProfile.canSendReminders
-                      )}
-                    </div>
-                  </div>
-                  {clinicProfile.currentCycleStartDate && (
-                    <div className="col-span-1 md:col-span-2">
-                      <p className="text-sm text-gray-500 mb-1">
-                        Current Cycle Started:
-                      </p>
-                      <div className="text-gray-700">
-                        {new Date(
-                          clinicProfile.currentCycleStartDate
-                        ).toLocaleDateString()}
-                      </div>
-                    </div>
-                  )}
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Basic Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Clinic Name</p>
+                  <p className="font-medium">{clinicProfile.name}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Address</p>
+                  <p className="font-medium">
+                    {clinicProfile.address || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Phone</p>
+                  <p className="font-medium">
+                    {clinicProfile.phone || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Timezone</p>
+                  <p className="font-medium">
+                    {clinicProfile.timezone || "UTC"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Reminder Settings */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Reminder Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-medium">
+                    {clinicProfile.canSendReminders ? (
+                      <span className="text-green-600">Enabled</span>
+                    ) : (
+                      <span className="text-red-600">Disabled</span>
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Reminder Limit
+                  </p>
+                  <p className="font-medium">
+                    {getTranslatedReminderLimit(
+                      clinicProfile.reminderMonthlyLimit,
+                      clinicProfile.canSendReminders
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Usage This Cycle
+                  </p>
+                  <div>
+                    {renderReminderUsage(
+                      clinicProfile.reminderSentThisCycle,
+                      clinicProfile.reminderMonthlyLimit,
+                      clinicProfile.canSendReminders
+                    )}
+                  </div>
+                </div>
+
+                {clinicProfile.currentCycleStartDate && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Current Cycle
+                    </p>
+                    <p className="font-medium">
+                      {new Date(
+                        clinicProfile.currentCycleStartDate
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Subscription Status */}
+          <div className="pt-4">
+            <h3 className="text-lg font-semibold mb-4">Subscription Status</h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Status</p>
+                <p className="font-medium">
+                  {clinicProfile.isActive ? (
+                    <span className="text-green-600">Active</span>
+                  ) : (
+                    <span className="text-red-600">Inactive</span>
+                  )}
+                </p>
               </div>
 
               {clinicProfile.subscriptionEndDate && (
-                <div className="">
-                  <h3 className="text-lg font-medium">Subscription</h3>
-                  <p className="text-gray-700">
-                    Status:{" "}
-                    <span
-                      className={
-                        clinicProfile.isActive
-                          ? "text-green-600 font-medium"
-                          : "text-red-600 font-medium"
-                      }
-                    >
-                      {clinicProfile.isActive ? "Active" : "Inactive"}
-                    </span>
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Subscription End Date
                   </p>
-                  <p className="text-gray-700">
-                    Expires:{" "}
+                  <p className="font-medium">
                     {new Date(
                       clinicProfile.subscriptionEndDate
                     ).toLocaleDateString()}
@@ -318,7 +372,16 @@ export default function ClinicProfilePage() {
                 </div>
               )}
             </div>
-          )}
+          </div>
+
+          {/* Legal Information */}
+          <div className="border-t pt-4 mt-6">
+            <p className="text-xs text-muted-foreground">
+              <strong>Note:</strong> Contact your administrator or support if
+              you need to change your reminder settings or subscription. Changes
+              to these settings can only be made by authorized personnel.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

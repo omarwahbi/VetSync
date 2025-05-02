@@ -79,7 +79,10 @@ export default function UserProfilePage() {
     },
     onError: (error: AxiosError<{ message?: string }>) => {
       console.error("Error updating profile:", error);
-      toast.error(error.response?.data?.message || "Failed to update profile");
+      toast.error(
+        error.response?.data?.message ||
+          "An error occurred while updating your profile"
+      );
     },
   });
 
@@ -92,12 +95,15 @@ export default function UserProfilePage() {
   const { mutate: changePassword, isPending: isChangingPwd } = useMutation({
     mutationFn: changePasswordFn,
     onSuccess: () => {
-      toast.success("Password updated successfully");
+      toast.success("Password changed successfully");
       setIsChangingPassword(false);
     },
     onError: (error: AxiosError<{ message?: string }>) => {
       console.error("Error changing password:", error);
-      toast.error(error.response?.data?.message || "Failed to change password");
+      toast.error(
+        error.response?.data?.message ||
+          "An error occurred while changing your password"
+      );
     },
   });
 
@@ -142,9 +148,7 @@ export default function UserProfilePage() {
           <CardTitle className="text-2xl">My Profile</CardTitle>
         </CardHeader>
         <CardContent className="">
-          <p className="text-destructive">
-            Error loading profile: {(error as Error).message}
-          </p>
+          <p className="text-destructive">Error: {(error as Error).message}</p>
         </CardContent>
       </Card>
     );
@@ -157,7 +161,7 @@ export default function UserProfilePage() {
           <CardTitle className="text-2xl">My Profile</CardTitle>
         </CardHeader>
         <CardContent className="flex justify-center py-8">
-          <LoadingSpinner size="md" text="Loading profile..." />
+          <LoadingSpinner size="md" text="Loading..." />
         </CardContent>
       </Card>
     );
@@ -230,44 +234,32 @@ export default function UserProfilePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="">
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                Email
-              </h4>
-              <p className="text-gray-700">{userProfile.email || ""}</p>
-            </div>
-            <div className="">
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                Member Since
-              </h4>
-              <p className="text-gray-700">
-                {userProfile.createdAt
-                  ? new Date(userProfile.createdAt).toLocaleDateString()
-                  : "N/A"}
-              </p>
+          <div className="space-y-2">
+            <h4 className="font-medium text-sm">Account Information</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="font-medium">{userProfile.email}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Member Since</p>
+                <p className="font-medium">
+                  {new Date(userProfile.createdAt).toLocaleDateString()}
+                </p>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      <Card className="">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl">Security</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleChangePassword}
-            className="gap-1"
-          >
-            <Lock className="h-4 w-4" />
-            Change Password
-          </Button>
-        </CardHeader>
-        <CardContent className="">
-          <p className="text-muted-foreground">
-            You can change your password to keep your account secure.
-          </p>
+          <div className="pt-4">
+            <Button
+              variant="outline"
+              onClick={handleChangePassword}
+              className="gap-1"
+            >
+              <Lock className="h-4 w-4" />
+              Change Password
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

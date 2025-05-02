@@ -62,6 +62,7 @@ export class ClinicsService {
         name: true,
         address: true,
         phone: true,
+        timezone: true,
         isActive: true,
         canSendReminders: true,
         subscriptionStartDate: true,

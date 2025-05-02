@@ -45,6 +45,14 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // VetSync brand colors
+        brand: {
+          primary: '#3B82F6',    // Blue
+          secondary: '#10B981',  // Green
+          accent: '#8B5CF6',     // Purple
+          light: '#F3F4F6',
+          dark: '#1F2937',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

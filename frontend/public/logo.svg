@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="180" height="50" viewBox="0 0 180 50" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .logo-text { font-family: 'Arial', sans-serif; font-weight: bold; }
+    .primary { fill: #3B82F6; }
+    .secondary { fill: #10B981; }
+  </style>
+  <g>
+    <text x="5" y="35" class="logo-text primary" font-size="32">Vet</text>
+    <text x="62" y="35" class="logo-text secondary" font-size="32">Sync</text>
+    <path class="secondary" d="M55,15 L55,38" stroke="#10B981" stroke-width="2" />
+    <path class="secondary" d="M48,25 C48,25 52,20 55,25 C58,30 62,25 62,25" stroke="#10B981" stroke-width="2" fill="none" />
+  </g>
+</svg> 
