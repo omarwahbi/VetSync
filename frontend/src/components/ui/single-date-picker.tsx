@@ -7,104 +7,79 @@ import {
   CalendarCell,
   CalendarGrid,
   Heading,
-  RangeCalendar,
+  Calendar as AriaCalendar,
 } from "react-aria-components";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { type DateValue, CalendarDate } from "@internationalized/date";
-import type { RangeValue } from "@react-types/shared";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 
-// Interface for DateRange similar to react-day-picker's DateRange
-export interface DateRange {
-  from: Date;
-  to?: Date;
-}
-
-// Props for our custom DateRangePicker component
-interface DateRangePickerProps {
-  dateRange: DateRange | undefined;
-  onChange: (dateRange: DateRange | undefined) => void;
+interface SingleDatePickerProps {
+  date: Date | undefined;
+  onChange: (date: Date | undefined) => void;
   className?: string;
-  onApply?: () => void;
+  placeholder?: string;
+  maxDate?: Date;
+  minDate?: Date;
+  isDisabled?: boolean;
 }
 
-export function DateRangePicker({
-  dateRange,
+export function SingleDatePicker({
+  date,
   onChange,
   className,
-  onApply,
-}: DateRangePickerProps) {
-  const t = useTranslations("Visits");
+  placeholder,
+  maxDate,
+  minDate,
+  isDisabled = false,
+}: SingleDatePickerProps) {
+  const t = useTranslations("Common");
   const params = useParams();
   const locale = params.locale as string;
   const isRtl = locale === "ar";
   const [isOpen, setIsOpen] = useState(false);
 
-  // Convert DateRange to react-aria's format
-  const value = dateRange
-    ? {
-        start: dateRange.from
-          ? new CalendarDate(
-              dateRange.from.getFullYear(),
-              dateRange.from.getMonth() + 1,
-              dateRange.from.getDate()
-            )
-          : undefined,
-        end: dateRange.to
-          ? new CalendarDate(
-              dateRange.to.getFullYear(),
-              dateRange.to.getMonth() + 1,
-              dateRange.to.getDate()
-            )
-          : undefined,
-      }
+  // Convert Date to react-aria's format with correct timezone handling
+  const value = date
+    ? new CalendarDate(
+        date.getFullYear(),
+        date.getMonth() + 1, // JavaScript months are 0-based, CalendarDate expects 1-based
+        date.getDate()
+      )
     : null;
 
   // Handle change from react-aria component
-  const handleChange = (value: RangeValue<DateValue> | null) => {
-    if (!value || !value.start) {
+  const handleChange = (value: DateValue | null) => {
+    if (!value) {
       onChange(undefined);
       return;
     }
 
-    // Create JavaScript Date objects directly from the calendar date components
-    // to avoid timezone issues
-    const fromDate = new Date(
-      value.start.year,
-      value.start.month - 1,
-      value.start.day
+    // Create a new JS Date preserving the exact date that was selected
+    const newDate = new Date(
+      value.year,
+      value.month - 1, // Convert back to 0-based month for JavaScript Date
+      value.day
     );
 
-    // Only create the toDate if value.end exists
-    const toDate = value.end
-      ? new Date(value.end.year, value.end.month - 1, value.end.day)
-      : undefined;
-
-    const newDateRange: DateRange = {
-      from: fromDate,
-      to: toDate,
-    };
-
-    onChange(newDateRange);
+    onChange(newDate);
+    // Don't close the popup when selecting a date to allow for changing selection
   };
 
   const handleClear = () => {
     onChange(undefined);
+    setIsOpen(false);
   };
 
   const handleApply = () => {
     setIsOpen(false);
-    if (onApply) {
-      onApply();
-    }
   };
 
   // Format date for display
   const formatDate = (date: Date) => {
     // Use locale-aware date formatting
-    return date.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-GB", {
+    return date.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -114,7 +89,7 @@ export function DateRangePicker({
   return (
     <div
       className={cn(
-        "relative date-range-picker",
+        "relative single-date-picker",
         isRtl ? "rtl" : "ltr",
         className
       )}
@@ -123,30 +98,43 @@ export function DateRangePicker({
         variant="outline"
         className={cn(
           "w-full justify-start text-start font-normal bg-white dark:bg-muted",
-          !dateRange && "text-muted-foreground"
+          !date && "text-muted-foreground"
         )}
         onClick={() => setIsOpen(true)}
+        disabled={isDisabled}
       >
         <Calendar className="me-2 h-4 w-4" />
-        {dateRange?.from ? (
-          dateRange.to ? (
-            <>
-              {formatDate(dateRange.from)} - {formatDate(dateRange.to)}
-            </>
-          ) : (
-            formatDate(dateRange.from)
-          )
+        {date ? (
+          formatDate(date)
         ) : (
-          <span>{t("filterByDate")}</span>
+          <span>{placeholder || t("selectDate")}</span>
         )}
       </Button>
 
       {isOpen && (
         <div className="absolute top-full start-0 mt-1 z-50 bg-popover rounded-md shadow-md border p-4 w-auto">
-          <RangeCalendar
-            value={value as RangeValue<DateValue>}
+          <AriaCalendar
+            value={value}
             onChange={handleChange}
             className="mb-4"
+            minValue={
+              minDate
+                ? new CalendarDate(
+                    minDate.getFullYear(),
+                    minDate.getMonth() + 1,
+                    minDate.getDate()
+                  )
+                : undefined
+            }
+            maxValue={
+              maxDate
+                ? new CalendarDate(
+                    maxDate.getFullYear(),
+                    maxDate.getMonth() + 1,
+                    maxDate.getDate()
+                  )
+                : undefined
+            }
           >
             <header className="flex items-center justify-between mb-2">
               <Heading className="font-medium text-sm" />
@@ -202,31 +190,27 @@ export function DateRangePicker({
               </div>
             </header>
             <CalendarGrid className="border-collapse">
-              {(date) => (
+              {(cellDate) => (
                 <CalendarCell
-                  date={date}
-                  className={({
-                    isSelected,
-                    isSelectionStart,
-                    isSelectionEnd,
-                    isFocusVisible,
-                  }) =>
+                  date={cellDate}
+                  className={({ isSelected, isFocusVisible, isDisabled }) =>
                     cn(
                       "h-9 w-9 rounded-md flex items-center justify-center text-sm outline-none group relative",
-                      !isSelected && "hover:bg-muted/50",
-                      isSelected && "bg-primary text-primary-foreground",
-                      (isSelectionStart || isSelectionEnd) && "rounded-md",
-                      !isSelectionStart &&
-                        !isSelectionEnd &&
-                        isSelected &&
-                        "bg-primary/20 text-foreground",
+                      !isSelected && !isDisabled && "hover:bg-muted/50",
+                      (isSelected ||
+                        (value &&
+                          cellDate.day === value.day &&
+                          cellDate.month === value.month &&
+                          cellDate.year === value.year)) &&
+                        "bg-primary text-primary-foreground",
+                      isDisabled && "text-muted-foreground opacity-50",
                       isFocusVisible && "ring-2 ring-offset-2 ring-primary"
                     )
                   }
                 />
               )}
             </CalendarGrid>
-          </RangeCalendar>
+          </AriaCalendar>
           <div className="flex items-center justify-between pt-2 border-t mt-2">
             <Button
               variant="ghost"

@@ -173,7 +173,7 @@ export function Sidebar() {
 
   return (
     <div className="h-full w-64 border-r border-border bg-white dark:bg-slate-950 flex flex-col">
-      <div className="py-4 px-4 border-b flex items-center justify-center">
+      <div className="py-[10.5px] px-4 border-b flex items-center justify-center">
         <Link
           href={getLocalizedHref("/dashboard")}
           className="flex items-center"

@@ -297,7 +297,8 @@
     "yearsOld": "years old",
     "monthsOld": "months old",
     "daysOld": "days old",
-    "createdon": "Created on"
+    "createdon": "Created on",
+    "openMenu": "Open Menu"
   },
   "Visits": {
     "title": "Visits",
@@ -316,6 +317,7 @@
     "visitTypeOther": "Other",
     "searchVisits": "Search visits",
     "filterByType": "Filter by type",
+    "filterByDate": "Filter by date",
     "dateFrom": "Date from",
     "dateTo": "Date to",
     "activeFilter": "Active Filter",
@@ -341,6 +343,8 @@
     "delete": "Delete",
     "deleting": "Deleting...",
     "cancel": "Cancel",
+    "clear": "Clear",
+    "apply": "Apply",
     "saveChanges": "Save Changes",
     "editVisit": "Edit Visit",
     "editVisitDescription": "Update the visit details for {name}.",
@@ -514,7 +518,10 @@
     "success": "Success",
     "warning": "Warning",
     "info": "Information",
-    "close": "Close"
+    "close": "Close",
+    "clear": "Clear",
+    "apply": "Apply",
+    "selectDate": "Select date"
   },
   "Login": {
     "welcome": "Welcome back",

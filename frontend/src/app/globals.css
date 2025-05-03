@@ -126,3 +126,56 @@
     font-family: var(--font-ibm-plex-sans-arabic), sans-serif;
   }
 }
+
+@layer components {
+  /* RTL support for date picker */
+  .rtl .date-picker-content {
+    direction: rtl;
+    text-align: right;
+  }
+
+  .ltr .date-picker-content {
+    direction: ltr;
+    text-align: left;
+  }
+  
+  /* Better positioning for Date Range Picker */
+  .date-range-picker [data-placement="bottom-start"],
+  .date-range-picker [data-placement="bottom-end"] {
+    width: 100%;
+    min-width: 300px;
+  }
+  
+  /* RTL popover placement */
+  .rtl [data-placement="bottom-end"] {
+    inset-inline-end: 0 !important;
+    inset-inline-start: auto !important;
+  }
+  
+  /* LTR popover placement */
+  .ltr [data-placement="bottom-start"] {
+    inset-inline-start: 0 !important;
+    inset-inline-end: auto !important;
+  }
+  
+  /* Ensure calendar cells are properly aligned */
+  .rtl [role="gridcell"],
+  .ltr [role="gridcell"] {
+    text-align: center;
+  }
+  
+  /* Month headings alignment */
+  .rtl [role="heading"] {
+    text-align: right;
+  }
+  
+  .ltr [role="heading"] {
+    text-align: left;
+  }
+  
+  /* Fix RTL calendar navigation */
+  .rtl [aria-label="Previous"] svg,
+  .rtl [aria-label="Next"] svg {
+    transform: scaleX(-1);
+  }
+}

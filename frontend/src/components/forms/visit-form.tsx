@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker";
+import { SingleDatePicker } from "@/components/ui/single-date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 
 // Define validation schema
@@ -331,9 +331,9 @@ export function VisitForm({
                 <span className="text-red-500 ml-1">*</span>
               </FormLabel>
               <FormControl>
-                <DatePicker
+                <SingleDatePicker
                   date={field.value}
-                  setDate={field.onChange}
+                  onChange={field.onChange}
                   className={isRTL ? "text-right" : "text-left"}
                 />
               </FormControl>
@@ -853,9 +853,10 @@ export function VisitForm({
                     )}
                 </FormLabel>
                 <FormControl>
-                  <DatePicker
+                  <SingleDatePicker
                     date={field.value instanceof Date ? field.value : undefined}
-                    setDate={(date) => field.onChange(date)}
+                    onChange={(date) => field.onChange(date)}
+                    className={isRTL ? "text-right" : "text-left"}
                   />
                 </FormControl>
                 <FormDescription className={isRTL ? "text-right" : "text-left"}>

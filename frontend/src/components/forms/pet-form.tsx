@@ -1,26 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, ControllerRenderProps } from "react-hook-form";
+import * as React from "react";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
-import {
-  Loader2,
-  Calendar as CalendarIcon,
-  Search,
-  User,
-  Cat,
-  Dog,
-  Users,
-  FileText,
-  Save,
-  X,
-  Bird,
-} from "lucide-react";
-import { format } from "date-fns";
-
+import { useForm, ControllerRenderProps } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -29,13 +12,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -43,9 +19,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import {
+  CalendarIcon,
+  Dog,
+  FileText,
+  Loader2,
+  Save,
+  Users,
+  X,
+  Search,
+  User,
+  Cat,
+  Bird,
+} from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { SingleDatePicker } from "@/components/ui/single-date-picker";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 
 // Define interfaces for Owner
 interface Owner {
@@ -99,7 +91,7 @@ export function PetForm({
   const locale = params.locale as string;
   const isRTL = locale === "ar";
 
-  const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
+  const [ownerSearchQuery, setOwnerSearchQuery] = React.useState("");
 
   // Create gender and species options with translated strings
   const genderOptions = [
@@ -375,45 +367,15 @@ export function PetForm({
                 <CalendarIcon className="h-4 w-4" />
                 {t("birthDate")}
               </FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground",
-                        isRTL && "text-right pr-3 pl-auto"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>{t("selectDate")}</span>
-                      )}
-                      <CalendarIcon
-                        className={`${
-                          isRTL ? "mr-auto ml-2" : "ml-auto mr-2"
-                        } h-4 w-4 opacity-50`}
-                      />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-auto p-0"
-                  align={isRTL ? "end" : "start"}
-                >
-                  <Calendar
-                    mode="single"
-                    selected={field.value || undefined}
-                    onSelect={field.onChange}
-                    disabled={(date) =>
-                      date > new Date() || date < new Date("1900-01-01")
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <FormControl>
+                <SingleDatePicker
+                  date={field.value || undefined}
+                  onChange={field.onChange}
+                  maxDate={new Date()}
+                  minDate={new Date("1900-01-01")}
+                  placeholder={t("selectDate")}
+                />
+              </FormControl>
               <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}

@@ -248,6 +248,7 @@
     "edit": "تعديل",
     "delete": "حذف",
     "cancel": "إلغاء",
+    "openMenu": "فتح القائمة",
     "pleaseWait": "يرجى الانتظار",
     "noPetsFound": "لم يتم العثور على حيوانات أليفة",
     "rowsPerPage": "صفوف لكل صفحة",
@@ -337,7 +338,10 @@
     "success": "نجاح",
     "warning": "تحذير",
     "info": "معلومات",
-    "close": "إغلاق"
+    "close": "إغلاق",
+    "clear": "مسح",
+    "apply": "تطبيق",
+    "selectDate": "اختر التاريخ"
   },
   "Login": {
     "welcome": "مرحبًا بعودتك",
@@ -390,6 +394,7 @@
     "visitTypeOther": "أخرى",
     "searchVisits": "البحث في الزيارات",
     "filterByType": "تصفية حسب النوع",
+    "filterByDate": "تصفية حسب التاريخ",
     "dateFrom": "التاريخ من",
     "dateTo": "التاريخ إلى",
     "activeFilter": "تصفية نشطة",
@@ -415,6 +420,8 @@
     "delete": "حذف",
     "deleting": "جاري الحذف...",
     "cancel": "إلغاء",
+    "clear": "مسح",
+    "apply": "تطبيق",
     "saveChanges": "حفظ التغييرات",
     "editVisit": "تعديل الزيارة",
     "editVisitDescription": "تحديث تفاصيل الزيارة لـ {name}.",

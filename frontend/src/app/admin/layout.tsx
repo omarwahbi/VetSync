@@ -1,38 +1,26 @@
 "use client";
 
-import { AdminGuard } from "@/components/auth/admin-guard";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function AdminLayout({
+export default function AdminLayoutLegacy({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AdminGuard>
-      <div className="flex h-screen">
-        {/* Sidebar - hidden on mobile, visible on md and up */}
-        <div className="hidden md:block">
-          <Sidebar />
-        </div>
+  const router = useRouter();
 
-        {/* Main content area */}
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold tracking-tight">
-                Platform Administration
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                Manage clinics and platform-wide settings
-              </p>
-            </div>
-            {children}
-          </main>
-        </div>
-      </div>
-    </AdminGuard>
+  useEffect(() => {
+    // Redirect to the new locale-based URL
+    // Default to 'en' if no locale is detected
+    router.replace("/en/admin");
+  }, [router]);
+
+  // We render children here to avoid the unused parameter warning
+  return (
+    <div className="p-8 text-center">
+      <p>Redirecting to new URL...</p>
+      <div style={{ display: "none" }}>{children}</div>
+    </div>
   );
 }

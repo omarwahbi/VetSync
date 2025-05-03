@@ -10,7 +10,6 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { format } from "date-fns";
 import axiosInstance from "@/lib/axios";
 import {
   Plus,
@@ -66,6 +65,7 @@ import { VisitForm, VisitFormValues } from "@/components/forms/visit-form";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { formatDisplayDate } from "@/lib/utils";
+import { QuickAddVisitModal } from "@/components/forms/quick-add-visit-modal";
 
 // Constants
 const PAGE_SIZES = [10, 20, 50, 100];
@@ -233,6 +233,9 @@ export function VisitsClient() {
 
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // New state for quick add visit modal
+  const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
 
   // Effect to update URL when filters change
   useEffect(() => {
@@ -410,7 +413,7 @@ export function VisitsClient() {
     if (!dateString) return "—";
     try {
       return formatDisplayDate(dateString);
-    } catch (error) {
+    } catch {
       return dateString;
     }
   };
@@ -435,7 +438,7 @@ export function VisitsClient() {
           </p>
         </div>
         <Button
-          onClick={() => router.push(`/${locale}/visits/new`)}
+          onClick={() => setIsVisitModalOpen(true)}
           className="bg-primary hover:bg-primary/90"
         >
           <Plus className="me-2 h-4 w-4" />
@@ -510,7 +513,6 @@ export function VisitsClient() {
                 <DateRangePicker
                   dateRange={dateRange}
                   onChange={setDateRange}
-                  placeholder={t("filterByDate")}
                   onApply={handleFilterChange}
                 />
               </div>
@@ -664,7 +666,7 @@ export function VisitsClient() {
                 <p className="text-muted-foreground mb-4 max-w-md">
                   {t("startByCreating")}
                 </p>
-                <Button onClick={() => router.push(`/${locale}/visits/new`)}>
+                <Button onClick={() => setIsVisitModalOpen(true)}>
                   <Plus className="me-2 h-4 w-4" />
                   {t("newVisit")}
                 </Button>
@@ -803,6 +805,14 @@ export function VisitsClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Quick Add Visit Modal */}
+      {isVisitModalOpen && (
+        <QuickAddVisitModal
+          isOpen={isVisitModalOpen}
+          onClose={() => setIsVisitModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
