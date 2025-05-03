@@ -121,10 +121,13 @@ const formatLocalizedDate = (dateString: string, locale: string): string => {
   try {
     const date = new Date(dateString);
     // Use the browser's Intl API for locale-aware date formatting
+    // Changed formatting to use numeric (2-digit) format for consistency with other parts of the app
     return new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
+      // Force a specific format pattern to match dd-MM-yyyy
+      formatMatcher: "basic",
     }).format(date);
   } catch (error) {
     console.error("Error formatting date with locale:", error);

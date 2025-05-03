@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { getClinicDateRange, getClinicFutureDateRange } from './date-utils';
-import { createDueTodayWhereClause } from './dashboard-utils';
+import { createDueTodayWhereClause, createUpcomingVisitsWhereClause } from './dashboard-utils';
 
 @Injectable()
 export class DashboardService {
@@ -59,20 +59,18 @@ export class DashboardService {
       `Clinic timezone (${timezone}) upcoming window: ${startDate.toISOString()} to ${endDate.toISOString()}`,
     );
     
+    // Use the common where clause for upcoming vaccinations
+    const upcomingVaccinationWhere = createUpcomingVisitsWhereClause(
+      clinicId,
+      30,
+      timezone,
+      'vaccination',
+      undefined // Don't filter by isReminderEnabled for the dashboard count
+    );
+    
     // Get the count of upcoming vaccination visits
     const upcomingVaccinationCount = await this.prisma.visit.count({
-      where: {
-        visitType: 'vaccination',
-        nextReminderDate: {
-          gte: startDate,
-          lte: endDate,
-        },
-        pet: {
-          owner: {
-            clinicId,
-          },
-        },
-      },
+      where: upcomingVaccinationWhere
     });
 
     // Get today's date range for the clinic's timezone

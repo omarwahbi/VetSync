@@ -85,7 +85,7 @@ export function formatDisplayDateTime(
   try {
     const date = new Date(dateInput);
     if (!isValid(date)) return "Invalid Date";
-    // Format displays date and time like "29-04-2023, 5:00 PM"
+    // Format displays date with time in a consistent format
     return format(date, "dd-MM-yyyy, h:mm a");
   } catch (error) {
     console.error("Error formatting date and time:", error);

@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FilterVisitDto } from './dto/filter-visit.dto';
 import { Prisma, User } from '@prisma/client';
 import { getUTCTodayRange, getClinicFutureDateRange, getClinicDateRange } from '../dashboard/date-utils';
-import { createDueTodayWhereClause } from '../dashboard/dashboard-utils';
+import { createDueTodayWhereClause, createUpcomingVisitsWhereClause } from '../dashboard/dashboard-utils';
 
 @Injectable()
 export class VisitsService {
@@ -205,38 +205,19 @@ export class VisitsService {
     }
     console.log(`Using timezone: ${timezone} for upcoming visits query`);
     
-    // Get date range based on clinic's timezone
-    const { start: startDate, end: endDate } = getClinicFutureDateRange(30, timezone);
-    
-    console.log('Upcoming date range using clinic timezone - From:', startDate.toISOString(), 'To:', endDate.toISOString());
-    
     // For regular users, ensure clinicId is not null or undefined before using it
     if (!user.clinicId && user.role !== 'ADMIN') {
       throw new Error('Clinic ID is required for non-admin users');
     }
     
-    // Build the query with the proper date range
-    let whereClause: Prisma.VisitWhereInput = {
-      nextReminderDate: {
-        gte: startDate, // Start from beginning of TODAY in clinic's timezone (converted to UTC)
-        lte: endDate,   // End at the end of the future date in clinic's timezone (converted to UTC)
-      },
-      isReminderEnabled: true, // Only include reminders that are enabled (consistent with other endpoints)
-    };
-    
-    // Add clinic filter for non-admin users
-    if (user.role !== 'ADMIN' || user.clinicId) {
-      if (user.clinicId) {
-        whereClause = {
-          ...whereClause,
-          pet: {
-            owner: {
-              clinicId: user.clinicId,
-            },
-          },
-        };
-      }
-    }
+    // Use the common where clause for upcoming visits
+    const whereClause = createUpcomingVisitsWhereClause(
+      user.clinicId,
+      30,
+      timezone,
+      undefined, // No specific visit type for upcoming visits list
+      undefined  // Don't filter by isReminderEnabled for consistency with dashboard
+    );
     
     console.log('Upcoming query where clause:', JSON.stringify(whereClause));
     

@@ -46,6 +46,7 @@ import {
 import { SimplePagination } from "@/components/owners/SimplePagination";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { formatDisplayDate } from "@/lib/utils";
 
 // Constants
 const PAGE_SIZES = [10, 20, 50, 100];
@@ -201,8 +202,9 @@ export function DueVisitsClient() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
+    if (!dateString) return "—";
     try {
-      return format(new Date(dateString), "PPp");
+      return formatDisplayDate(dateString);
     } catch (error) {
       return dateString;
     }

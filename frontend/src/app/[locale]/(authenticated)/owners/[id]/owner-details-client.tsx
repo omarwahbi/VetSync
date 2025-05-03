@@ -39,6 +39,8 @@ import {
 } from "@/components/owners/OwnerDialogs";
 import { OwnerFormValues } from "@/hooks/useOwnerMutations";
 import { usePetsByOwner } from "@/hooks/usePets";
+import { cn, formatDisplayDate, formatDisplayDateTime } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Pet {
   id: string;
@@ -263,7 +265,7 @@ export function OwnerDetailsClient() {
                       <div>
                         <p className="font-medium">{t("registered")}</p>
                         <p className="text-muted-foreground">
-                          {format(new Date(owner.createdAt), "PPP")}
+                          {formatDisplayDate(owner.createdAt)}
                         </p>
                       </div>
                     </div>

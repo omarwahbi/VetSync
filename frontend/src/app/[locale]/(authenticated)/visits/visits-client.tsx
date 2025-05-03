@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import {
+  useRouter,
+  useParams,
+  useSearchParams,
+  usePathname,
+} from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -60,6 +65,7 @@ import {
 import { VisitForm, VisitFormValues } from "@/components/forms/visit-form";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import { formatDisplayDate } from "@/lib/utils";
 
 // Constants
 const PAGE_SIZES = [10, 20, 50, 100];
@@ -142,7 +148,10 @@ const fetchVisits = async (
     page,
     limit,
     search: searchTerm || undefined,
-    visitType: visitType && visitType !== "ALL" ? visitType : undefined,
+    visitType:
+      visitType && visitType.toUpperCase() !== "ALL"
+        ? visitType.toLowerCase()
+        : undefined,
     status: status && status !== "ALL" ? status.toLowerCase() : undefined,
     startDate: dateRange?.from
       ? dateRange.from.toISOString().split("T")[0]
@@ -195,12 +204,25 @@ export function VisitsClient() {
   const t = useTranslations("Visits");
   const router = useRouter();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
-  // State for filters
-  const [page, setPage] = useState(1);
+  // Get initial values from URL parameters
+  const initialPage = parseInt(searchParams.get("page") || "1", 10);
+  // Normalize case of visitType to match the VISIT_TYPES values
+  const rawVisitType = searchParams.get("visitType");
+  const initialVisitType = rawVisitType
+    ? VISIT_TYPES.find(
+        (type) => type.value.toLowerCase() === rawVisitType.toLowerCase()
+      )?.value || "ALL"
+    : "ALL";
+  const initialSearchTerm = searchParams.get("search") || "";
+
+  // State for filters - now initialized from URL params
+  const [page, setPage] = useState(initialPage);
   const [limit, setLimit] = useState(20);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [visitType, setVisitType] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [visitType, setVisitType] = useState(initialVisitType);
   const [status, setStatus] = useState("ALL");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
@@ -211,6 +233,27 @@ export function VisitsClient() {
 
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Effect to update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    // Only add parameters that aren't default values
+    if (page !== 1) params.set("page", page.toString());
+    if (searchTerm) params.set("search", searchTerm);
+    if (visitType !== "ALL") {
+      // For vaccination types, preserve "vaccination" lowercase format from dashboard
+      const value =
+        visitType.toLowerCase() === "vaccination" ? "vaccination" : visitType;
+      params.set("visitType", value);
+    }
+
+    // Update the URL without refreshing the page
+    const queryString = params.toString();
+    router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {
+      scroll: false,
+    });
+  }, [page, searchTerm, visitType, pathname, router]);
 
   // Query for fetching visits
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -364,9 +407,10 @@ export function VisitsClient() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
+    if (!dateString) return "—";
     try {
-      return format(new Date(dateString), "PPp");
-    } catch {
+      return formatDisplayDate(dateString);
+    } catch (error) {
       return dateString;
     }
   };

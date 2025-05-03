@@ -88,7 +88,12 @@ export function DateRangePicker({
 
   // Format date for display
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString(undefined, { dateStyle: "medium" });
+    // Use DD-MM-YYYY format for consistency
+    return date.toLocaleDateString(undefined, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   return (
