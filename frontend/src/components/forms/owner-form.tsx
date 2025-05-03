@@ -3,6 +3,8 @@
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 import {
   Loader2,
   User,
@@ -80,19 +82,24 @@ export function OwnerForm({
   isLoading = false,
   hideButtons = false,
 }: OwnerFormProps) {
+  const t = useTranslations("OwnerForm");
+  const params = useParams();
+  const locale = params.locale as string;
+  const isRTL = locale === "ar";
+
   // Get clinic reminder settings from auth store
   const clinicCanSendReminders = useAuthStore(
     (state) => state.user?.clinic?.canSendReminders ?? false
   );
 
-  // Create validation schema with error messages
+  // Create validation schema with translated error messages
   const ownerSchema = createOwnerSchema({
-    firstNameRequired: "First name is required",
-    lastNameRequired: "Last name is required",
-    invalidEmail: "Invalid email format",
-    invalidPhone: "Invalid phone number format",
-    phoneRequired: "Phone number is required",
-    addressTooLong: "Address must be less than 500 characters",
+    firstNameRequired: t("firstNameRequired"),
+    lastNameRequired: t("lastNameRequired"),
+    invalidEmail: t("invalidEmail"),
+    invalidPhone: t("invalidPhone"),
+    phoneRequired: t("phoneRequired"),
+    addressTooLong: t("addressTooLong"),
   });
 
   const form = useForm<OwnerFormValues>({
@@ -127,6 +134,7 @@ export function OwnerForm({
         id="owner-form"
         onSubmit={form.handleSubmit(handleSubmit)}
         className="space-y-4"
+        dir={isRTL ? "rtl" : "ltr"}
       >
         <FormField
           control={form.control}
@@ -135,12 +143,16 @@ export function OwnerForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                First Name
+                {t("firstName")}
               </FormLabel>
               <FormControl>
-                <Input placeholder="Mohammad" {...field} />
+                <Input
+                  placeholder={t("firstNamePlaceholder")}
+                  {...field}
+                  className={isRTL ? "text-right" : "text-left"}
+                />
               </FormControl>
-              <FormMessage className="text-sm" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -152,12 +164,16 @@ export function OwnerForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                Last Name
+                {t("lastName")}
               </FormLabel>
               <FormControl>
-                <Input placeholder="Ahmad" {...field} />
+                <Input
+                  placeholder={t("lastNamePlaceholder")}
+                  {...field}
+                  className={isRTL ? "text-right" : "text-left"}
+                />
               </FormControl>
-              <FormMessage className="text-sm" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -169,21 +185,22 @@ export function OwnerForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                Email
+                {t("email")}
               </FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="john.doe@example.com"
+                  placeholder={t("emailPlaceholder")}
                   {...field}
                   value={field.value || ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     const value = e.target.value;
                     field.onChange(value);
                   }}
+                  className={isRTL ? "text-right" : "text-left"}
                 />
               </FormControl>
-              <FormMessage className="text-sm" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -195,12 +212,17 @@ export function OwnerForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                Phone Number <span className="text-red-500">*</span>
+                {t("phoneNumber")} <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input placeholder="07xx xxx xxx" {...field} />
+                <Input
+                  type="tel"
+                  placeholder={t("phonePlaceholder")}
+                  {...field}
+                  className={isRTL ? "text-right" : "text-left"}
+                />
               </FormControl>
-              <FormMessage className="text-sm" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -212,51 +234,50 @@ export function OwnerForm({
             <FormItem className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Address
+                {t("address")}
               </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Enter client's address"
+                  placeholder={t("addressPlaceholder")}
                   {...field}
-                  className="resize-none min-h-[80px]"
+                  value={field.value || ""}
+                  className={`resize-none min-h-[80px] ${
+                    isRTL ? "text-right" : "text-left"
+                  }`}
                 />
               </FormControl>
-              <FormMessage className="text-sm" />
+              <FormMessage />
             </FormItem>
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="allowAutomatedReminders"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-              <FormControl>
-                <Checkbox
-                  checked={!!field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={!clinicCanSendReminders}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel
-                  className={`flex items-center gap-2 ${
-                    !clinicCanSendReminders ? "text-muted-foreground" : ""
-                  }`}
-                >
-                  <Bell className="h-4 w-4" />
-                  Allow Automated Reminders
-                </FormLabel>
-                <FormDescription className="text-sm text-muted-foreground">
-                  {clinicCanSendReminders
-                    ? "Allow sending automated appointment reminders to this client via email or SMS"
-                    : "Reminders are disabled for your clinic. Contact admin to enable."}
-                </FormDescription>
-              </div>
-              <FormMessage className="text-sm" />
-            </FormItem>
-          )}
-        />
+        {clinicCanSendReminders && (
+          <FormField
+            control={form.control}
+            name="allowAutomatedReminders"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-2 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="flex items-center gap-2">
+                    <Bell className="h-4 w-4" />
+                    {t("allowReminders")}
+                  </FormLabel>
+                  <FormDescription
+                    className={isRTL ? "text-right" : "text-left"}
+                  >
+                    {t("allowRemindersDescription")}
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+        )}
 
         {!hideButtons && (
           <div className="flex justify-end gap-2 pt-4">
@@ -265,22 +286,26 @@ export function OwnerForm({
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
-              className="flex items-center gap-2"
             >
-              <X className="h-4 w-4" />
-              Cancel
+              <X className={`h-4 w-4 ${isRTL ? "ml-2" : "mr-2"}`} />
+              {t("cancel")}
             </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex items-center gap-2"
-            >
+            <Button type="submit" disabled={isLoading}>
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2
+                    className={`h-4 w-4 animate-spin ${
+                      isRTL ? "ml-2" : "mr-2"
+                    }`}
+                  />
+                  {t("saving")}
+                </>
               ) : (
-                <Save className="h-4 w-4" />
+                <>
+                  <Save className={`h-4 w-4 ${isRTL ? "ml-2" : "mr-2"}`} />
+                  {initialData ? t("updateOwner") : t("saveOwner")}
+                </>
               )}
-              Save
             </Button>
           </div>
         )}

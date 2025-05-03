@@ -1,5 +1,12 @@
+/**
+ * This file contains the client-side components for the dashboard.
+ * It is dynamically imported and rendered client-side only.
+ * This ensures the NextIntlClientProvider context is properly established.
+ */
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -26,12 +33,9 @@ import { useState } from "react";
 import { NewClientWizard } from "@/components/wizards/new-client-wizard";
 import { QuickAddVisitModal } from "@/components/forms/quick-add-visit-modal";
 import { cn, formatDisplayDate } from "@/lib/utils";
-import Link from "next/link";
 
-// Simple Skeleton component for loading states
-const Skeleton = ({ className = "" }: { className?: string }) => (
-  <div className={`bg-muted animate-pulse rounded ${className}`} />
-);
+// Use a more direct translation approach for the client component
+import { useTranslations } from "next-intl";
 
 // Interface for upcoming visits
 interface UpcomingVisit {
@@ -47,6 +51,11 @@ interface UpcomingVisit {
   nextReminderDate: string;
   visitType: string;
 }
+
+// Simple Skeleton component for loading states
+const Skeleton = ({ className = "" }: { className?: string }) => (
+  <div className={`bg-muted animate-pulse rounded ${className}`} />
+);
 
 // Function to fetch dashboard stats
 const fetchDashboardStats = async () => {
@@ -84,11 +93,60 @@ const getVisitTypeBadgeColor = (visitType: string) => {
   }
 };
 
-export default function DashboardPage() {
+// Function to translate visit types
+const getTranslatedVisitType = (
+  visitType: string,
+  t: ReturnType<typeof useTranslations>
+) => {
+  switch (visitType.toLowerCase()) {
+    case "checkup":
+      return t("visitTypeCheckup");
+    case "vaccination":
+      return t("visitTypeVaccination");
+    case "emergency":
+      return t("visitTypeEmergency");
+    case "surgery":
+      return t("visitTypeSurgery");
+    case "dental":
+      return t("visitTypeDental");
+    case "grooming":
+      return t("visitTypeGrooming");
+    default:
+      return t("visitTypeOther");
+  }
+};
+
+// Localized date formatter
+const formatLocalizedDate = (dateString: string, locale: string): string => {
+  try {
+    const date = new Date(dateString);
+    // Use the browser's Intl API for locale-aware date formatting
+    return new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  } catch (error) {
+    console.error("Error formatting date with locale:", error);
+    return formatDisplayDate(dateString); // Fall back to the original function
+  }
+};
+
+// Main dashboard component
+export function DashboardClient() {
+  console.log("DashboardClient: Initializing");
+
+  // Get current locale from params to confirm it's correct
+  const params = useParams();
+
+  // Access translations directly
+  const t = useTranslations("Dashboard");
+
   const { user } = useAuthStore();
   const userRole = user?.role;
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
+  const locale = params.locale as string;
 
   // Query for fetching dashboard stats
   const {
@@ -112,19 +170,19 @@ export default function DashboardPage() {
 
   // Prepare display values for stats
   const ownerCountDisplay = isLoadingStats ? (
-    <LoadingSpinner size="sm" text="Total Owners" />
+    <LoadingSpinner size="sm" text={t("totalOwners")} />
   ) : (
     stats?.ownerCount ?? 0
   );
 
   const petCountDisplay = isLoadingStats ? (
-    <LoadingSpinner size="sm" text="Total Pets" />
+    <LoadingSpinner size="sm" text={t("totalPets")} />
   ) : (
     stats?.petCount ?? 0
   );
 
   const upcomingVaccinationCountDisplay = isLoadingStats ? (
-    <LoadingSpinner size="sm" text="Upcoming Vaccinations" />
+    <LoadingSpinner size="sm" text={t("upcomingVaccinations")} />
   ) : (
     stats?.upcomingVaccinationCount ?? 0
   );
@@ -140,12 +198,12 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Dashboard
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
             {user
-              ? `Welcome back, ${user.firstName || "User"}!`
-              : "Welcome to VetSync"}
+              ? t("welcomeBack", { name: user.firstName || t("user") })
+              : t("welcome")}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -156,7 +214,7 @@ export default function DashboardPage() {
             onClick={() => setIsVisitModalOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            New Visit
+            {t("newVisit")}
           </Button>
           <Button
             variant="default"
@@ -165,7 +223,7 @@ export default function DashboardPage() {
             onClick={() => setIsWizardOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Register Client
+            {t("registerClient")}
           </Button>
         </div>
       </div>
@@ -175,56 +233,68 @@ export default function DashboardPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {/* Visits Due Today Card */}
           <Link
-            href="/due-visits"
+            href={`/${locale}/due-visits`}
             className="transition-transform hover:scale-105"
           >
             <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Visits Due Today
+                  {t("visitsDueToday")}
                 </CardTitle>
                 <CalendarCheck2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{dueTodayCountDisplay}</div>
                 {isErrorStats && (
-                  <p className="text-xs text-red-500">Error loading stats</p>
+                  <p className="text-xs text-red-500">
+                    {t("errorLoadingStats")}
+                  </p>
                 )}
               </CardContent>
             </Card>
           </Link>
 
           {/* Owner Count Card */}
-          <Link href="/owners" className="transition-transform hover:scale-105">
+          <Link
+            href={`/${locale}/owners`}
+            className="transition-transform hover:scale-105"
+          >
             <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Owners
+                  {t("totalOwners")}
                 </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{ownerCountDisplay}</div>
                 {isErrorStats && (
-                  <p className="text-xs text-red-500">Error loading stats</p>
+                  <p className="text-xs text-red-500">
+                    {t("errorLoadingStats")}
+                  </p>
                 )}
               </CardContent>
             </Card>
           </Link>
 
           {/* Pet Count Card */}
-          <Link href="/pets" className="transition-transform hover:scale-105">
+          <Link
+            href={`/${locale}/pets`}
+            className="transition-transform hover:scale-105"
+          >
             <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Pets
+                  {t("totalPets")}
                 </CardTitle>
                 <PawPrint className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{petCountDisplay}</div>
                 {isErrorStats && (
-                  <p className="text-xs text-red-500">Error loading stats</p>
+                  <p className="text-xs text-red-500">
+                    {t("errorLoadingStats")}
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -232,13 +302,13 @@ export default function DashboardPage() {
 
           {/* Upcoming Vaccinations Card */}
           <Link
-            href="/visits?page=1&visitType=vaccination"
+            href={`/${locale}/visits?page=1&visitType=vaccination`}
             className="transition-transform hover:scale-105"
           >
             <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Upcoming Vaccinations
+                  {t("upcomingVaccinations")}
                 </CardTitle>
                 <CalendarClock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -247,7 +317,9 @@ export default function DashboardPage() {
                   {upcomingVaccinationCountDisplay}
                 </div>
                 {isErrorStats && (
-                  <p className="text-xs text-red-500">Error loading stats</p>
+                  <p className="text-xs text-red-500">
+                    {t("errorLoadingStats")}
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -256,71 +328,63 @@ export default function DashboardPage() {
       )}
 
       {/* Upcoming Visits Section */}
-      <div className="grid gap-4">
-        <Card className="bg-white dark:bg-card shadow-sm">
-          <CardHeader>
-            <CardTitle>Upcoming Visits</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex justify-center p-4">
-                <LoadingSpinner size="md" text="Loading upcoming visits..." />
-              </div>
-            ) : isError ? (
-              <div className="p-4 text-center text-red-500">
-                Error loading visits
-              </div>
-            ) : upcomingVisits.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground">
-                No upcoming visits scheduled
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Pet</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Type</TableHead>
+      <div>
+        <h2 className="text-xl font-semibold mb-4">{t("upcomingVisits")}</h2>
+        <Card>
+          {isLoading ? (
+            <div className="flex justify-center items-center p-8">
+              <LoadingSpinner text={t("loadingVisits")} />
+            </div>
+          ) : isError ? (
+            <div className="text-center p-8 text-red-500">
+              <p>{t("errorLoadingVisits")}</p>
+            </div>
+          ) : upcomingVisits.length === 0 ? (
+            <div className="text-center p-8 text-muted-foreground">
+              <p>{t("noUpcomingVisits")}</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("petName")}</TableHead>
+                  <TableHead>{t("ownerName")}</TableHead>
+                  <TableHead>{t("date")}</TableHead>
+                  <TableHead>{t("visitType")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {upcomingVisits.map((visit) => (
+                  <TableRow key={visit.id}>
+                    <TableCell>
+                      <div className="font-medium">{visit.pet.name}</div>
+                    </TableCell>
+                    <TableCell>
+                      {visit.pet.owner.firstName} {visit.pet.owner.lastName}
+                    </TableCell>
+                    <TableCell>
+                      {formatLocalizedDate(visit.nextReminderDate, locale)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={cn(
+                          "rounded-full px-2 py-1 text-xs",
+                          getVisitTypeBadgeColor(visit.visitType)
+                        )}
+                        variant="outline"
+                      >
+                        {getTranslatedVisitType(visit.visitType, t)}
+                      </Badge>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {upcomingVisits.map((visit) => (
-                    <TableRow key={visit.id}>
-                      <TableCell>
-                        <Link
-                          href={`/pets/${visit.petId}`}
-                          className="text-primary hover:underline"
-                        >
-                          {visit.pet.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        {`${visit.pet.owner.firstName} ${visit.pet.owner.lastName}`}
-                      </TableCell>
-                      <TableCell>
-                        {formatDisplayDate(visit.nextReminderDate)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={cn(
-                            "font-normal text-xs",
-                            getVisitTypeBadgeColor(visit.visitType)
-                          )}
-                        >
-                          {visit.visitType}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </Card>
       </div>
 
-      {/* New Client Wizard Modal */}
+      {/* Modals - Now pass locale instead of messages */}
       {isWizardOpen && (
         <NewClientWizard
           isOpen={isWizardOpen}
@@ -328,7 +392,6 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Quick Add Visit Modal */}
       {isVisitModalOpen && (
         <QuickAddVisitModal
           isOpen={isVisitModalOpen}

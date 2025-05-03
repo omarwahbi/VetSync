@@ -1196,13 +1196,13 @@ export default function VisitsPage() {
                             >
                               <DropdownMenuItem
                                 onClick={() => handleEditClick(visit)}
-                                className="cursor-pointer text-left"
+                                className="cursor-pointer text-start"
                                 inset={false}
                               >
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="text-red-600 cursor-pointer text-left"
+                                className="text-red-600 cursor-pointer text-start"
                                 onClick={() => handleDeleteClick(visit)}
                                 inset={false}
                               >

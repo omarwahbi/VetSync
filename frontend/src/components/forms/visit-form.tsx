@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { addMonths, addYears } from "date-fns";
 import { useAuthStore } from "@/store/auth";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 
 import {
   Form,
@@ -116,6 +118,11 @@ export function VisitForm({
   hideButtons = false,
   quickAdd = false,
 }: VisitFormProps) {
+  const t = useTranslations("VisitForm");
+  const params = useParams();
+  const locale = params.locale as string;
+  const isRTL = locale === "ar";
+
   // Add state for showing all vital signs
   const [showAllVitals, setShowAllVitals] = useState(false);
 
@@ -308,6 +315,7 @@ export function VisitForm({
         id="visit-form"
         onSubmit={form.handleSubmit(handleSubmit)}
         className="space-y-8"
+        dir={isRTL ? "rtl" : "ltr"}
       >
         <FormField
           control={form.control}
@@ -318,14 +326,18 @@ export function VisitForm({
             field: ControllerRenderProps<VisitFormValues, "visitDate">;
           }) => (
             <FormItem className="flex flex-col">
-              <FormLabel className="">Visit Date</FormLabel>
+              <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                {t("visitDate")}
+                <span className="text-red-500 ml-1">*</span>
+              </FormLabel>
               <FormControl>
                 <DatePicker
-                  date={field.value instanceof Date ? field.value : new Date()}
-                  setDate={(date) => field.onChange(date || new Date())}
+                  date={field.value}
+                  setDate={field.onChange}
+                  className={isRTL ? "text-right" : "text-left"}
                 />
               </FormControl>
-              <FormMessage className="" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
@@ -339,26 +351,28 @@ export function VisitForm({
             field: ControllerRenderProps<VisitFormValues, "visitType">;
           }) => (
             <FormItem className="flex flex-col">
-              <FormLabel className="">Visit Type</FormLabel>
+              <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                {t("visitType")}
+              </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger className="">
-                    <SelectValue placeholder="Select visit type" />
+                  <SelectTrigger className={isRTL ? "text-right" : "text-left"}>
+                    <SelectValue placeholder={t("selectVisitType")} />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent className="">
+                <SelectContent className={isRTL ? "text-right" : "text-left"}>
                   {visitTypeOptions.map((option) => (
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className=""
+                      className={isRTL ? "text-right" : "text-left"}
                     >
-                      {option.label}
+                      {t(`visitTypes.${option.value}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage className="" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
@@ -372,12 +386,14 @@ export function VisitForm({
             field: ControllerRenderProps<VisitFormValues, "price">;
           }) => (
             <FormItem className="flex flex-col">
-              <FormLabel className="">Visit Price (IQD)</FormLabel>
+              <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                {t("visitPrice")}
+              </FormLabel>
               <FormControl>
                 <Input
                   type="text"
                   placeholder="0.00"
-                  className=""
+                  className={isRTL ? "text-right" : "text-left"}
                   value={formatCurrency(field.value)}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     // Only allow digits, commas, and decimal point
@@ -389,7 +405,7 @@ export function VisitForm({
                   }}
                 />
               </FormControl>
-              <FormMessage className="" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
@@ -402,36 +418,40 @@ export function VisitForm({
           }: {
             field: ControllerRenderProps<VisitFormValues, "notes">;
           }) => (
-            <FormItem className="">
-              <FormLabel className="">Notes</FormLabel>
+            <FormItem className="w-full">
+              <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                {t("notes")}
+              </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Optional notes about the visit"
-                  className="resize-none"
+                  placeholder={t("optionalNotesPlaceholder")}
+                  className={isRTL ? "text-right" : "text-left"}
                   {...field}
                 />
               </FormControl>
-              <FormMessage className="" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
 
         <div className="space-y-4 border-t pt-4 mt-4">
           <div className="flex justify-between items-center">
-            <h4 className="font-medium">Vital Signs</h4>
+            <h4 className={isRTL ? "text-right" : "text-left"}>
+              {t("vitalSigns")}
+            </h4>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => setShowAllVitals(!showAllVitals)}
             >
-              {showAllVitals ? "Show Less" : "Show More"}
+              {showAllVitals ? t("showLess") : t("showMore")}
             </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Weight with Weight Unit - Always visible */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 rtl:space-x-reverse">
               <FormField
                 control={form.control}
                 name="weight"
@@ -441,12 +461,15 @@ export function VisitForm({
                   field: ControllerRenderProps<VisitFormValues, "weight">;
                 }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>Weight</FormLabel>
+                    <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                      {t("weight")}
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="0.1"
                         placeholder="5.5"
+                        className={isRTL ? "text-right" : "text-left"}
                         {...field}
                         value={field.value !== null ? field.value : ""}
                         onChange={(e) => {
@@ -457,7 +480,9 @@ export function VisitForm({
                         }}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage
+                      className={isRTL ? "text-right" : "text-left"}
+                    />
                   </FormItem>
                 )}
               />
@@ -471,27 +496,41 @@ export function VisitForm({
                   field: ControllerRenderProps<VisitFormValues, "weightUnit">;
                 }) => (
                   <FormItem className="w-24">
-                    <FormLabel>Unit</FormLabel>
+                    <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                      {t("unit")}
+                    </FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                       value={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger className="">
+                        <SelectTrigger
+                          className={isRTL ? "text-right" : "text-left"}
+                        >
                           <SelectValue placeholder="kg" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="">
-                        <SelectItem value="kg" className="">
+                      <SelectContent
+                        className={isRTL ? "text-right" : "text-left"}
+                      >
+                        <SelectItem
+                          value="kg"
+                          className={isRTL ? "text-right" : "text-left"}
+                        >
                           kg
                         </SelectItem>
-                        <SelectItem value="lb" className="">
+                        <SelectItem
+                          value="lb"
+                          className={isRTL ? "text-right" : "text-left"}
+                        >
                           lb
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    <FormMessage
+                      className={isRTL ? "text-right" : "text-left"}
+                    />
                   </FormItem>
                 )}
               />
@@ -507,11 +546,14 @@ export function VisitForm({
                 field: ControllerRenderProps<VisitFormValues, "heartRate">;
               }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>HR (bpm)</FormLabel>
+                  <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                    {t("heartRate")}
+                  </FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       placeholder="120"
+                      className={isRTL ? "text-right" : "text-left"}
                       {...field}
                       value={field.value !== null ? field.value : ""}
                       onChange={(e) => {
@@ -522,7 +564,7 @@ export function VisitForm({
                       }}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className={isRTL ? "text-right" : "text-left"} />
                 </FormItem>
               )}
             />
@@ -531,8 +573,8 @@ export function VisitForm({
             {showAllVitals && (
               <>
                 <div className="col-span-1 md:col-span-2 border-t border-gray-200 dark:border-gray-700 my-2 pt-2">
-                  <span className="text-sm text-muted-foreground">
-                    Additional Vital Signs
+                  <span className="text-sm text-muted-foreground text-start block">
+                    {t("additionalVitalSigns")}
                   </span>
                 </div>
 
@@ -549,12 +591,15 @@ export function VisitForm({
                     >;
                   }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Temp (°C)</FormLabel>
+                      <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                        {t("temperature")}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.1"
                           placeholder="38.5"
+                          className={isRTL ? "text-right" : "text-left"}
                           {...field}
                           value={field.value !== null ? field.value : ""}
                           onChange={(e) => {
@@ -565,7 +610,9 @@ export function VisitForm({
                           }}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage
+                        className={isRTL ? "text-right" : "text-left"}
+                      />
                     </FormItem>
                   )}
                 />
@@ -583,11 +630,14 @@ export function VisitForm({
                     >;
                   }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>RR (bpm)</FormLabel>
+                      <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                        {t("respiratoryRate")}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           placeholder="24"
+                          className={isRTL ? "text-right" : "text-left"}
                           {...field}
                           value={field.value !== null ? field.value : ""}
                           onChange={(e) => {
@@ -598,7 +648,9 @@ export function VisitForm({
                           }}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage
+                        className={isRTL ? "text-right" : "text-left"}
+                      />
                     </FormItem>
                   )}
                 />
@@ -613,11 +665,14 @@ export function VisitForm({
                     field: ControllerRenderProps<VisitFormValues, "spo2">;
                   }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>SpO2 (%)</FormLabel>
+                      <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                        {t("spo2")}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           placeholder="98"
+                          className={isRTL ? "text-right" : "text-left"}
                           {...field}
                           value={field.value !== null ? field.value : ""}
                           onChange={(e) => {
@@ -628,7 +683,9 @@ export function VisitForm({
                           }}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage
+                        className={isRTL ? "text-right" : "text-left"}
+                      />
                     </FormItem>
                   )}
                 />
@@ -643,16 +700,21 @@ export function VisitForm({
                     field: ControllerRenderProps<VisitFormValues, "crt">;
                   }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>CRT (sec)</FormLabel>
+                      <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                        {t("crt")}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="text"
                           placeholder="< 2"
+                          className={isRTL ? "text-right" : "text-left"}
                           {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage
+                        className={isRTL ? "text-right" : "text-left"}
+                      />
                     </FormItem>
                   )}
                 />
@@ -670,16 +732,21 @@ export function VisitForm({
                     >;
                   }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>BP (mmHg)</FormLabel>
+                      <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                        {t("bloodPressure")}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="text"
                           placeholder="120/80"
+                          className={isRTL ? "text-right" : "text-left"}
                           {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage
+                        className={isRTL ? "text-right" : "text-left"}
+                      />
                     </FormItem>
                   )}
                 />
@@ -694,16 +761,21 @@ export function VisitForm({
                     field: ControllerRenderProps<VisitFormValues, "mmColor">;
                   }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>MM Color</FormLabel>
+                      <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                        {t("mmColor")}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="text"
                           placeholder="Pink"
+                          className={isRTL ? "text-right" : "text-left"}
                           {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage
+                        className={isRTL ? "text-right" : "text-left"}
+                      />
                     </FormItem>
                   )}
                 />
@@ -718,13 +790,16 @@ export function VisitForm({
                     field: ControllerRenderProps<VisitFormValues, "painScore">;
                   }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Pain Score (0-10)</FormLabel>
+                      <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                        {t("painScore")}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           min="0"
                           max="10"
                           placeholder="0"
+                          className={isRTL ? "text-right" : "text-left"}
                           {...field}
                           value={field.value !== null ? field.value : ""}
                           onChange={(e) => {
@@ -735,7 +810,9 @@ export function VisitForm({
                           }}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage
+                        className={isRTL ? "text-right" : "text-left"}
+                      />
                     </FormItem>
                   )}
                 />
@@ -746,11 +823,15 @@ export function VisitForm({
 
         <div className="space-y-4">
           <div>
-            <FormLabel className="">Reminder Settings</FormLabel>
-            <FormDescription className="">
+            <FormLabel className={isRTL ? "text-right" : "text-left block"}>
+              {t("reminderSettings")}
+            </FormLabel>
+            <FormDescription
+              className={isRTL ? "text-right" : "text-left block"}
+            >
               {clinicCanSendReminders
-                ? "Configure the next reminder for this pet"
-                : "Automated reminders are not enabled for this clinic"}
+                ? t("configureReminder")
+                : t("remindersNotEnabled")}
             </FormDescription>
           </div>
 
@@ -764,8 +845,8 @@ export function VisitForm({
               field: ControllerRenderProps<VisitFormValues, "nextReminderDate">;
             }) => (
               <FormItem className="flex flex-col">
-                <FormLabel className="">
-                  Next Visit Date{" "}
+                <FormLabel className={isRTL ? "text-right" : "text-left"}>
+                  {t("nextVisitDate")}{" "}
                   {clinicCanSendReminders &&
                     form.watch("isReminderEnabled") && (
                       <span className="text-red-500">*</span>
@@ -777,29 +858,29 @@ export function VisitForm({
                     setDate={(date) => field.onChange(date)}
                   />
                 </FormControl>
-                <FormDescription className="">
+                <FormDescription className={isRTL ? "text-right" : "text-left"}>
                   {!clinicCanSendReminders
-                    ? "Automated reminders are not enabled for this clinic"
+                    ? t("remindersNotEnabled")
                     : !ownerAllowsReminders
-                    ? "Owner has opted out of automated reminders"
+                    ? t("ownerOptedOut")
                     : form.watch("isReminderEnabled")
-                    ? "Send automated reminder on this date"
-                    : "No automated reminder will be sent, but date is still recorded"}
+                    ? t("sendAutomatedReminder")
+                    : t("noReminderButDateRecorded")}
                 </FormDescription>
-                <FormMessage className="" />
+                <FormMessage className={isRTL ? "text-right" : "text-left"} />
               </FormItem>
             )}
           />
 
           {/* Quick reminder date buttons - should always be available */}
-          <div className="flex flex-wrap gap-2 mt-1">
+          <div className="flex flex-wrap gap-2 mt-1 rtl:space-x-reverse">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setReminderDate(1)}
             >
-              +1 Month
+              {t("oneMonth")}
             </Button>
             <Button
               type="button"
@@ -807,7 +888,7 @@ export function VisitForm({
               size="sm"
               onClick={() => setReminderDate(3)}
             >
-              +3 Months
+              {t("threeMonths")}
             </Button>
             <Button
               type="button"
@@ -815,7 +896,7 @@ export function VisitForm({
               size="sm"
               onClick={() => setReminderDate(6)}
             >
-              +6 Months
+              {t("sixMonths")}
             </Button>
             <Button
               type="button"
@@ -823,7 +904,7 @@ export function VisitForm({
               size="sm"
               onClick={() => setReminderDate(0, 1)}
             >
-              +1 Year
+              {t("oneYear")}
             </Button>
           </div>
 
@@ -840,7 +921,7 @@ export function VisitForm({
                   "isReminderEnabled"
                 >;
               }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse">
                   <FormControl>
                     <Checkbox
                       checked={field.value}
@@ -850,18 +931,18 @@ export function VisitForm({
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel
-                      className={
+                      className={`text-start block ${
                         !remindersAllowed ? "text-muted-foreground" : ""
-                      }
+                      }`}
                     >
-                      Enable Reminder
+                      {t("enableReminder")}
                     </FormLabel>
-                    <FormDescription className="">
+                    <FormDescription className="text-start block">
                       {remindersAllowed
-                        ? "Send a reminder for follow-up"
+                        ? t("sendReminder")
                         : ownerAllowsReminders
-                        ? "Automated reminders are disabled for this clinic"
-                        : "Owner has opted out of automated reminders"}
+                        ? t("remindersDisabledForClinic")
+                        : t("ownerOptedOut")}
                     </FormDescription>
                   </div>
                 </FormItem>
@@ -871,18 +952,30 @@ export function VisitForm({
         </div>
 
         {!hideButtons && (
-          <div className="flex justify-end gap-4 pt-4">
+          <div className="flex justify-end mt-6 gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {initialData && !quickAdd ? "Update Visit" : "Add Visit"}
+              {isLoading ? (
+                <>
+                  <Loader2
+                    className={`h-4 w-4 animate-spin ${
+                      isRTL ? "ml-2" : "mr-2"
+                    }`}
+                  />
+                  {t("saving")}
+                </>
+              ) : initialData ? (
+                t("updateVisit")
+              ) : (
+                t("addVisit")
+              )}
             </Button>
           </div>
         )}

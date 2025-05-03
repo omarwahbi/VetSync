@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useTranslations } from "next-intl";
 
 // Define the form schema with zod
 const formSchema = z.object({
@@ -38,6 +39,8 @@ export function ClinicCreateUserForm({
   onClose,
   isLoading,
 }: ClinicCreateUserFormProps) {
+  const t = useTranslations("ManageUsers");
+
   // Initialize the form with react-hook-form and zod resolver
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,10 +74,10 @@ export function ClinicCreateUserForm({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email Address*</FormLabel>
+              <FormLabel>{t("email")}*</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="staff@example.com"
+                  placeholder={t("emailPlaceholder")}
                   type="email"
                   autoComplete="email"
                   disabled={isLoading}
@@ -91,7 +94,7 @@ export function ClinicCreateUserForm({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password*</FormLabel>
+              <FormLabel>{t("password")}*</FormLabel>
               <FormControl>
                 <Input
                   placeholder="••••••••"
@@ -112,10 +115,10 @@ export function ClinicCreateUserForm({
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>First Name</FormLabel>
+                <FormLabel>{t("firstName")}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="First Name"
+                    placeholder={t("firstNamePlaceholder")}
                     disabled={isLoading}
                     {...field}
                   />
@@ -130,10 +133,10 @@ export function ClinicCreateUserForm({
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last Name</FormLabel>
+                <FormLabel>{t("lastName")}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Last Name"
+                    placeholder={t("lastNamePlaceholder")}
                     disabled={isLoading}
                     {...field}
                   />
@@ -151,13 +154,13 @@ export function ClinicCreateUserForm({
             onClick={onClose}
             disabled={isLoading}
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading ? (
-              <LoadingSpinner size="sm" text="Creating..." />
+              <LoadingSpinner size="sm" text={t("creating")} />
             ) : (
-              "Create Staff User"
+              t("createUser")
             )}
           </Button>
         </div>

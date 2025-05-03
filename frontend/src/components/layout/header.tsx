@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/store/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Menu, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -24,7 +24,19 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sidebar } from "./sidebar";
 import { ThemeToggleButton } from "@/components/ui/theme-toggle-button";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import axiosInstance from "@/lib/axios";
+import { useTranslations } from "next-intl";
+
+// Translation fallback for header translations
+const getHeaderTranslation = (key: string): string => {
+  const fallbacks: Record<string, string> = {
+    myAccount: "My Account",
+    clinicProfile: "Clinic Profile",
+    logout: "Logout",
+  };
+  return fallbacks[key] || key;
+};
 
 export function Header() {
   // Use individual selectors to avoid unnecessary rerenders
@@ -32,6 +44,24 @@ export function Header() {
   const logout = useAuthStore((state) => state.logout);
   const { theme } = useTheme();
   const router = useRouter();
+  const params = useParams();
+
+  // Get locale from params
+  const locale = (params?.locale as string) || "en";
+
+  // Initialize with fallback translation function to avoid conditional hook usage
+  let t = getHeaderTranslation;
+
+  try {
+    // This might throw if context is missing
+    const translationHook = useTranslations("Navigation");
+    // If no error, use the real hook
+    t = translationHook;
+  } catch {
+    console.warn(
+      "Translation context not available in Header, using fallbacks"
+    );
+  }
 
   const handleLogout = async () => {
     try {
@@ -40,14 +70,14 @@ export function Header() {
     } catch (error) {
       console.error("Error during logout:", error);
     } finally {
-      // Clear local state regardless of server response
       logout();
+      // Redirect to the login page without locale prefix
       router.push("/login");
     }
   };
 
   const handleClinicProfileClick = () => {
-    router.push("/clinic-profile");
+    router.push(`/${locale}/clinic-profile`);
   };
 
   // Get user initials for avatar
@@ -96,7 +126,8 @@ export function Header() {
 
       <div className="flex items-center space-x-4">
         <ThemeToggleButton />
-        <DropdownMenu>
+        <LanguageSwitcher />
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
@@ -106,26 +137,38 @@ export function Header() {
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent
+            align="end"
+            className="w-56"
+            forceMount
+            sideOffset={8}
+            collisionPadding={8}
+          >
             <DropdownMenuLabel className="font-normal" inset={false}>
-              {user ? `${user.firstName} ${user.lastName}` : "My Account"}
+              {user ? `${user.firstName} ${user.lastName}` : t("myAccount")}
             </DropdownMenuLabel>
             <DropdownMenuItem
               className="cursor-pointer"
               inset={false}
-              onClick={handleClinicProfileClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClinicProfileClick();
+              }}
             >
               <Building2 className="mr-2 h-4 w-4" />
-              Clinic Profile
+              {t("clinicProfile")}
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem
               className="cursor-pointer text-red-500"
-              onClick={handleLogout}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLogout();
+              }}
               inset={false}
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              {t("logout")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

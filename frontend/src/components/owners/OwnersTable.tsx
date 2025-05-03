@@ -2,6 +2,8 @@ import React from "react";
 import { Owner } from "@/hooks/useOwners";
 import Link from "next/link";
 import { formatPhoneNumberForWhatsApp } from "@/lib/phoneUtils";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 import {
   Table,
   TableHeader,
@@ -52,6 +54,11 @@ export const OwnersTable: React.FC<OwnersTableProps> = ({
   onDelete,
   meta,
 }) => {
+  const t = useTranslations("Owners");
+  const params = useParams();
+  const locale = params.locale as string;
+  const isRTL = locale === "ar";
+
   if (!owners || owners.length === 0) {
     return null;
   }
@@ -60,36 +67,49 @@ export const OwnersTable: React.FC<OwnersTableProps> = ({
     <Table className="w-full">
       {meta && (
         <TableCaption className="text-sm text-muted-foreground">
-          Showing page {meta.currentPage} of {meta.totalPages} (
-          {meta.totalCount} total owners)
+          {t.rich("totalCount", { count: meta.totalCount })}
         </TableCaption>
       )}
       <TableHeader className="bg-muted/50">
         <TableRow className="hover:bg-muted/50">
           {columnsVisibility.firstName && (
-            <TableHead className="font-medium">First Name</TableHead>
+            <TableHead className="font-medium text-start">
+              {t("firstName")}
+            </TableHead>
           )}
           {columnsVisibility.lastName && (
-            <TableHead className="font-medium">Last Name</TableHead>
+            <TableHead className="font-medium text-start">
+              {t("lastName")}
+            </TableHead>
           )}
           {columnsVisibility.email && (
-            <TableHead className="font-medium">Email</TableHead>
+            <TableHead className="font-medium text-start">
+              {t("email")}
+            </TableHead>
           )}
           {columnsVisibility.phone && (
-            <TableHead className="font-medium">Phone</TableHead>
+            <TableHead className="font-medium text-start">
+              {t("phone")}
+            </TableHead>
           )}
           {columnsVisibility.reminders && (
-            <TableHead className="font-medium">Reminders</TableHead>
+            <TableHead className="font-medium text-start">
+              {t("reminders")}
+            </TableHead>
           )}
           {columnsVisibility.createdBy && (
-            <TableHead className="font-medium">Created By</TableHead>
+            <TableHead className="font-medium text-start">
+              {t("createdBy")}
+            </TableHead>
           )}
           {columnsVisibility.updatedBy && (
-            <TableHead className="font-medium">Updated By</TableHead>
+            <TableHead className="font-medium text-start">
+              {t("updatedBy")}
+            </TableHead>
           )}
           {columnsVisibility.actions && (
             <TableHead className="text-center font-medium w-20">
-              Actions
+              {t("actions")}
             </TableHead>
           )}
         </TableRow>
@@ -101,9 +121,9 @@ export const OwnersTable: React.FC<OwnersTableProps> = ({
           return (
             <TableRow key={owner.id} className="hover:bg-muted/50">
               {columnsVisibility.firstName && (
-                <TableCell className="font-medium">
+                <TableCell className="font-medium text-start">
                   <Link
-                    href={`/owners/${owner.id}`}
+                    href={`/${locale}/owners/${owner.id}`}
                     className="text-primary hover:underline"
                   >
                     {owner.firstName}
@@ -111,17 +131,17 @@ export const OwnersTable: React.FC<OwnersTableProps> = ({
                 </TableCell>
               )}
               {columnsVisibility.lastName && (
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground text-start">
                   {owner.lastName}
                 </TableCell>
               )}
               {columnsVisibility.email && (
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground text-start">
                   {owner.email || "-"}
                 </TableCell>
               )}
               {columnsVisibility.phone && (
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground text-start">
                   <div className="flex items-center gap-2">
                     <span>{owner.phone}</span>
                     {whatsappNumber && (
@@ -130,7 +150,9 @@ export const OwnersTable: React.FC<OwnersTableProps> = ({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-green-600 hover:text-green-700"
-                        title={`Chat with ${owner.firstName} on WhatsApp`}
+                        title={t("chatWithOnWhatsApp", {
+                          name: owner.firstName,
+                        })}
                       >
                         <MessageSquare className="h-4 w-4" />
                       </a>
@@ -139,40 +161,40 @@ export const OwnersTable: React.FC<OwnersTableProps> = ({
                 </TableCell>
               )}
               {columnsVisibility.reminders && (
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground text-start">
                   {owner.allowAutomatedReminders ? (
                     <Badge
                       variant="outline"
                       className="bg-green-100 text-green-800"
                     >
-                      Enabled
+                      {t("reminderEnabled")}
                     </Badge>
                   ) : (
                     <Badge
                       variant="outline"
                       className="bg-red-100 text-red-800"
                     >
-                      Disabled
+                      {t("reminderDisabled")}
                     </Badge>
                   )}
                 </TableCell>
               )}
               {columnsVisibility.createdBy && (
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground text-start">
                   {owner.createdBy
                     ? `${owner.createdBy.firstName || ""} ${
                         owner.createdBy.lastName || ""
-                      }`.trim() || "Unknown"
-                    : "System"}
+                      }`.trim() || t("unknown")
+                    : t("system")}
                 </TableCell>
               )}
               {columnsVisibility.updatedBy && (
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground text-start">
                   {owner.updatedBy
                     ? `${owner.updatedBy.firstName || ""} ${
                         owner.updatedBy.lastName || ""
-                      }`.trim() || "Unknown"
-                    : "System"}
+                      }`.trim() || t("unknown")
+                    : t("system")}
                 </TableCell>
               )}
               {columnsVisibility.actions && (
@@ -184,36 +206,42 @@ export const OwnersTable: React.FC<OwnersTableProps> = ({
                         size="icon"
                         className="h-8 w-8 p-0"
                       >
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{t("openMenu")}</span>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-36">
                       <DropdownMenuItem
                         asChild
-                        className="cursor-pointer text-left"
+                        className="cursor-pointer text-start"
                         inset={false}
                       >
-                        <Link href={`/owners/${owner.id}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
+                        <Link href={`/${locale}/owners/${owner.id}`}>
+                          <Eye
+                            className={`${isRTL ? "ms-2" : "me-2"} h-4 w-4`}
+                          />
+                          {t("viewDetails")}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onEdit(owner)}
-                        className="cursor-pointer text-left"
+                        className="cursor-pointer text-start"
                         inset={false}
                       >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
+                        <Edit
+                          className={`${isRTL ? "ms-2" : "me-2"} h-4 w-4`}
+                        />
+                        {t("edit")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onDelete(owner)}
-                        className="text-red-600 focus:text-red-600 cursor-pointer text-left"
+                        className="text-red-600 focus:text-red-600 cursor-pointer text-start"
                         inset={false}
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        <Trash2
+                          className={`${isRTL ? "ms-2" : "me-2"} h-4 w-4`}
+                        />
+                        {t("delete")}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

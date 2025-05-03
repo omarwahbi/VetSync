@@ -5,6 +5,11 @@ import { Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axios";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
+import { NextIntlClientProvider } from "next-intl";
+import arMessages from "@/messages/ar.json";
+import enMessages from "@/messages/en.json";
 
 import {
   Dialog,
@@ -50,8 +55,10 @@ interface NewClientWizardProps {
   onClose: () => void;
 }
 
-export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
+// Original component implementation wrapped with provider
+function NewClientWizardContent({ isOpen, onClose }: NewClientWizardProps) {
   const queryClient = useQueryClient();
+  const t = useTranslations("NewClientWizard");
 
   // Step management
   const [step, setStep] = useState(1);
@@ -71,10 +78,10 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
       setCreatedOwnerId(response.id);
       queryClient.invalidateQueries({ queryKey: ["owners"] });
       setStep(2);
-      toast.success("Owner created successfully");
+      toast.success(t("ownerCreatedSuccess"));
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create owner: ${error.message}`);
+      toast.error(t("failedOwner", { error: error.message }));
     },
     onSettled: () => {
       setIsSubmitting(false);
@@ -96,10 +103,10 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
       queryClient.invalidateQueries({ queryKey: ["pets"] });
       queryClient.invalidateQueries({ queryKey: ["owner", createdOwnerId] });
       setStep(3);
-      toast.success("Pet created successfully");
+      toast.success(t("petCreatedSuccess"));
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create pet: ${error.message}`);
+      toast.error(t("failedPet", { error: error.message }));
     },
     onSettled: () => {
       setIsSubmitting(false);
@@ -123,11 +130,11 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
       queryClient.invalidateQueries({ queryKey: ["pet", createdPetId] });
 
       // Show success message and close wizard
-      toast.success("Client registration completed successfully!");
+      toast.success(t("registrationSuccess"));
       handleClose();
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create visit: ${error.message}`);
+      toast.error(t("failedVisit", { error: error.message }));
     },
     onSettled: () => {
       setIsSubmitting(false);
@@ -161,11 +168,11 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
   const getStepTitle = () => {
     switch (step) {
       case 1:
-        return "Owner Information";
+        return t("ownerInformation");
       case 2:
-        return "Pet Information";
+        return t("petInformation");
       case 3:
-        return "First Visit Details";
+        return t("visitDetails");
       default:
         return "";
     }
@@ -174,11 +181,11 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
   const getStepDescription = () => {
     switch (step) {
       case 1:
-        return "Enter the owner's contact information.";
+        return t("ownerDescription");
       case 2:
-        return "Enter the pet's details.";
+        return t("petDescription");
       case 3:
-        return "Schedule the first visit.";
+        return t("visitDescription");
       default:
         return "";
     }
@@ -189,10 +196,13 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
       <DialogContent
         className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
+        dir="auto"
       >
         <DialogHeader>
-          <DialogTitle>{getStepTitle()}</DialogTitle>
-          <DialogDescription>{getStepDescription()}</DialogDescription>
+          <DialogTitle className="text-start">{getStepTitle()}</DialogTitle>
+          <DialogDescription className="text-start">
+            {getStepDescription()}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
@@ -236,7 +246,7 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
           )}
         </div>
 
-        <DialogFooter className="flex flex-col-reverse sm:flex-row items-center gap-2 sm:justify-between">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row items-center gap-2 sm:justify-between rtl:space-x-reverse">
           <div>
             <Button
               variant="outline"
@@ -244,7 +254,7 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
               disabled={isSubmitting}
               className="w-full sm:w-auto"
             >
-              Close
+              {t("cancel")}
             </Button>
           </div>
           <div>
@@ -262,9 +272,9 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
                 className="w-full sm:w-auto"
               >
                 {isSubmitting && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 )}
-                Next
+                {t("next")}
               </Button>
             ) : (
               <Button
@@ -274,14 +284,32 @@ export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
                 className="w-full sm:w-auto"
               >
                 {isSubmitting && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 )}
-                Complete Registration
+                {t("finish")}
               </Button>
             )}
           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Exported component that wraps the original with proper i18n setup
+export function NewClientWizard({ isOpen, onClose }: NewClientWizardProps) {
+  const params = useParams();
+  const locale = params.locale as string;
+
+  // Validate the locale (defaults to 'en' if missing)
+  const validLocale = locale || "en";
+
+  // Get messages directly based on locale
+  const messages = validLocale === "ar" ? arMessages : enMessages;
+
+  return (
+    <NextIntlClientProvider locale={validLocale} messages={messages}>
+      <NewClientWizardContent isOpen={isOpen} onClose={onClose} />
+    </NextIntlClientProvider>
   );
 }

@@ -2,6 +2,8 @@ import React from "react";
 import { Search, X, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 
 interface OwnersSearchFilterProps {
   searchTerm: string;
@@ -18,28 +20,40 @@ export const OwnersSearchFilter: React.FC<OwnersSearchFilterProps> = ({
   onClearFilters,
   totalCount,
 }) => {
+  const t = useTranslations("Owners");
+  const params = useParams();
+  const locale = params.locale as string;
+  const isRTL = locale === "ar";
+
   return (
     <div className="px-6 py-4">
       <div className="relative max-w-sm">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search
+          className={`absolute ${
+            isRTL ? "right-2" : "left-2"
+          } top-2.5 h-4 w-4 text-muted-foreground`}
+        />
         <Input
           type="text"
-          placeholder="Search owners..."
+          placeholder={t("searchOwners")}
           value={searchTerm}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onSearchChange(e.target.value)
           }
-          className="pl-8 pr-10"
+          className={`${isRTL ? "pr-8 pl-10" : "pl-8 pr-10"} text-start`}
+          dir="auto"
         />
         {searchTerm && (
           <Button
             variant="ghost"
             size="sm"
-            className="absolute right-0 top-0 h-full px-3 py-0"
+            className={`absolute ${
+              isRTL ? "left-0" : "right-0"
+            } top-0 h-full px-3 py-0`}
             onClick={() => onSearchChange("")}
           >
             <X className="h-4 w-4" />
-            <span className="sr-only">Clear search</span>
+            <span className="sr-only">{t("clearSearch")}</span>
           </Button>
         )}
       </div>
@@ -52,14 +66,16 @@ export const OwnersSearchFilter: React.FC<OwnersSearchFilterProps> = ({
             onClick={onClearFilters}
             className="text-muted-foreground"
           >
-            <Filter className="h-3.5 w-3.5 mr-1" />
-            Clear all filters
+            <Filter className={`h-3.5 w-3.5 ${isRTL ? "ms-1" : "me-1"}`} />
+            {t("clearFilters")}
           </Button>
-          <div className="ml-4 text-sm text-muted-foreground">
+          <div
+            className={`${
+              isRTL ? "me-4" : "ms-4"
+            } text-sm text-muted-foreground`}
+          >
             {totalCount !== undefined && (
-              <span>
-                {totalCount} {totalCount === 1 ? "owner" : "owners"} found
-              </span>
+              <span>{t.rich("totalCount", { count: totalCount })}</span>
             )}
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Owner } from "@/hooks/useOwners";
 import { OwnerFormValues } from "@/hooks/useOwnerMutations";
 import { OwnerForm } from "@/components/forms/owner-form";
@@ -34,6 +35,8 @@ export const AddOwnerDialog: React.FC<AddOwnerDialogProps> = ({
   onSubmit,
   isLoading,
 }) => {
+  const t = useTranslations("Owners");
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
@@ -41,7 +44,7 @@ export const AddOwnerDialog: React.FC<AddOwnerDialogProps> = ({
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-xl">Add New Owner</DialogTitle>
+          <DialogTitle className="text-xl">{t("addOwner")}</DialogTitle>
         </DialogHeader>
         <OwnerForm
           onSubmit={onSubmit}
@@ -69,6 +72,8 @@ export const EditOwnerDialog: React.FC<EditOwnerDialogProps> = ({
   onSubmit,
   isLoading,
 }) => {
+  const t = useTranslations("Owners");
+
   if (!owner) return null;
 
   const initialData = {
@@ -87,7 +92,7 @@ export const EditOwnerDialog: React.FC<EditOwnerDialogProps> = ({
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-xl">Edit Owner</DialogTitle>
+          <DialogTitle className="text-xl">{t("editOwner")}</DialogTitle>
         </DialogHeader>
         <OwnerForm
           initialData={initialData}
@@ -114,19 +119,23 @@ export const DeleteOwnerDialog: React.FC<DeleteOwnerDialogProps> = ({
   onConfirm,
   isLoading,
 }) => {
+  const t = useTranslations("Owners");
+
   if (!owner) return null;
 
   return (
     <AlertDialog open={!!owner} onOpenChange={onClose}>
       <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{t("confirmDeleteOwner")}</AlertDialogTitle>
           <AlertDialogDescription>
-            This action will permanently delete the owner and cannot be undone.
+            {t("ownerDeleteWarning")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>
+            {t("cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
@@ -134,11 +143,11 @@ export const DeleteOwnerDialog: React.FC<DeleteOwnerDialogProps> = ({
           >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                {t("deleting")}
               </>
             ) : (
-              "Delete"
+              t("delete")
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

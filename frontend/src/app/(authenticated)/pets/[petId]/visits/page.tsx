@@ -445,7 +445,7 @@ export default function PetVisitsPage() {
                   <TableHead className="font-medium w-36">Next Visit</TableHead>
                   <TableHead className="font-medium w-28">Reminder</TableHead>
                   <TableHead className="font-medium">Notes</TableHead>
-                  <TableHead className="text-right font-medium w-12">
+                  <TableHead className="text-end font-medium w-12">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -495,7 +495,7 @@ export default function PetVisitsPage() {
                     <TableCell className="max-w-xs truncate">
                       {visit.notes || "—"}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

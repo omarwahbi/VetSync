@@ -618,7 +618,7 @@ export default function AdminUsersPage() {
                     <TableHead>Role</TableHead>
                     <TableHead>Clinic</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-end">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -651,7 +651,7 @@ export default function AdminUsersPage() {
                           {user.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

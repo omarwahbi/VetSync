@@ -3,9 +3,14 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Search, PlusCircle } from "lucide-react";
+import { Loader2, PlusCircle } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { useAuthStore } from "@/store/auth";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
+import { NextIntlClientProvider } from "next-intl";
+import arMessages from "@/messages/ar.json";
+import enMessages from "@/messages/en.json";
 
 import {
   Dialog,
@@ -14,10 +19,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { VisitForm, VisitFormValues } from "@/components/forms/visit-form";
-import { PetForm, PetFormValues } from "@/components/forms/pet-form";
 import {
   Select,
   SelectContent,
@@ -25,12 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { VisitForm, VisitFormValues } from "@/components/forms/visit-form";
+import { PetForm, PetFormValues } from "@/components/forms/pet-form";
 
 interface Owner {
   id: string;
   firstName: string;
   lastName: string;
+  phone: string;
 }
 
 interface Pet {
@@ -50,16 +55,16 @@ interface QuickAddVisitModalProps {
   onClose: () => void;
 }
 
-export function QuickAddVisitModal({
+function QuickAddVisitModalContent({
   isOpen,
   onClose,
 }: QuickAddVisitModalProps) {
   const queryClient = useQueryClient();
+  const t = useTranslations("QuickAddVisit");
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [selectedPetData, setSelectedPetData] = useState<Pet | null>(null);
-  const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
-  const [showAddPetDialog, setShowAddPetDialog] = useState(false);
+  const [selectedOwnerName, setSelectedOwnerName] = useState<string>("");
 
   // Get auth token for checking authentication status
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -130,12 +135,6 @@ export function QuickAddVisitModal({
 
   // Ensure owners is always an array
   const owners = Array.isArray(ownersData) ? ownersData : [];
-
-  // Filter owners based on search query
-  const filteredOwners = owners.filter((owner) => {
-    const fullName = `${owner.firstName} ${owner.lastName}`.toLowerCase();
-    return fullName.includes(ownerSearchQuery.toLowerCase());
-  });
 
   // Debug logs
   useEffect(() => {
@@ -262,7 +261,7 @@ export function QuickAddVisitModal({
       toast.success("Pet added successfully!");
 
       // Close the add pet dialog
-      setShowAddPetDialog(false);
+      setShowPetForm(false);
 
       // If we have pet data returned, select it automatically
       if (data && data.id) {
@@ -286,7 +285,7 @@ export function QuickAddVisitModal({
     setSelectedOwnerId(null);
     setSelectedPetId(null);
     setSelectedPetData(null);
-    setOwnerSearchQuery("");
+    setSelectedOwnerName("");
     onClose();
   };
 
@@ -298,6 +297,14 @@ export function QuickAddVisitModal({
     setSelectedOwnerId(ownerId);
     setSelectedPetId(null);
     setSelectedPetData(null);
+
+    // Set the owner name for display
+    const owner = owners.find((o) => o.id === ownerId);
+    if (owner) {
+      setSelectedOwnerName(
+        `${owner.firstName || ""} ${owner.lastName || ""}`.trim()
+      );
+    }
   };
 
   const handleSelectPet = (petId: string) => {
@@ -323,8 +330,10 @@ export function QuickAddVisitModal({
     }
   };
 
-  const handleAddPet = (data: PetFormValues) => {
-    createPet(data);
+  const [showPetForm, setShowPetForm] = useState(false);
+
+  const handleShowPetForm = () => {
+    setShowPetForm(true);
   };
 
   // Log when component renders
@@ -339,110 +348,111 @@ export function QuickAddVisitModal({
       <DialogContent
         className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
+        dir="auto"
       >
         <DialogHeader>
-          <DialogTitle>Add New Visit</DialogTitle>
-          <DialogDescription>
-            Select owner, pet, and fill in visit details to create a new visit.
+          <DialogTitle className="text-start">{t("title")}</DialogTitle>
+          <DialogDescription className="text-start">
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Step 1: Owner Selection */}
           <div className="space-y-2">
-            <Label htmlFor="owner-select" className="text-sm font-medium">
-              Select Owner
+            <Label
+              htmlFor="owner-select"
+              className="text-sm font-medium text-start block"
+            >
+              {t("selectOwner")}
             </Label>
             <Select
               value={selectedOwnerId || ""}
               onValueChange={handleSelectOwner}
               disabled={isLoadingOwners || owners.length === 0}
             >
-              <SelectTrigger className="w-full" id="owner-select">
-                <SelectValue placeholder="Select an owner" />
+              <SelectTrigger className="w-full text-start" id="owner-select">
+                <SelectValue placeholder={t("selectOwner")} />
               </SelectTrigger>
               <SelectContent className="w-full">
-                <div className="flex items-center border-b px-3 py-2">
-                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                  <Input
-                    placeholder="Search owners..."
-                    className="h-8 border-0 p-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                    value={ownerSearchQuery}
-                    onChange={(e) => setOwnerSearchQuery(e.target.value)}
-                  />
-                </div>
-                <div className="max-h-[200px] overflow-y-auto">
-                  {filteredOwners.length > 0 ? (
-                    filteredOwners.map((owner) => (
-                      <SelectItem
-                        key={owner.id}
-                        value={owner.id}
-                        className="cursor-pointer"
-                      >
-                        {owner.firstName} {owner.lastName}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                      No owners found
-                    </div>
-                  )}
-                </div>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Step 2: Pet Selection (only when owner is selected) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="pet-select" className="text-sm font-medium">
-                Select Pet
-              </Label>
-              {selectedOwnerId && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-1 text-primary"
-                  onClick={() => setShowAddPetDialog(true)}
-                >
-                  <PlusCircle className="h-4 w-4" />
-                  <span>Add Pet</span>
-                </Button>
-              )}
-            </div>
-            <Select
-              value={selectedPetId || ""}
-              onValueChange={handleSelectPet}
-              disabled={!selectedOwnerId || isLoadingPets || pets.length === 0}
-            >
-              <SelectTrigger className="w-full" id="pet-select">
-                <SelectValue placeholder="Select a pet" />
-              </SelectTrigger>
-              <SelectContent className="w-full">
-                {isLoadingPets ? (
-                  <div className="flex justify-center items-center py-4">
-                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                    <span>Loading pets...</span>
+                {isLoadingOwners ? (
+                  <div className="flex items-center gap-2 p-2 rtl:space-x-reverse">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{t("loadingOwners")}</span>
                   </div>
-                ) : pets.length > 0 ? (
-                  pets.map((pet) => (
+                ) : owners.length === 0 ? (
+                  <div className="p-2 text-center text-sm">{t("noOwners")}</div>
+                ) : (
+                  owners.map((owner) => (
                     <SelectItem
-                      key={pet.id}
-                      value={pet.id}
-                      className="cursor-pointer"
+                      key={owner.id}
+                      value={owner.id}
+                      className="cursor-pointer text-start"
                     >
-                      {pet.name} ({pet.species})
+                      {`${owner.firstName || ""} ${owner.lastName || ""} (${
+                        owner.phone
+                      })`}
                     </SelectItem>
                   ))
-                ) : (
-                  <div className="py-4 text-center text-sm text-muted-foreground">
-                    No pets found for this owner
-                  </div>
                 )}
               </SelectContent>
             </Select>
           </div>
+
+          {/* Step 2: Pet Selection */}
+          {selectedOwnerId && (
+            <div className="space-y-2">
+              <Label
+                htmlFor="pet-select"
+                className="text-sm font-medium text-start block"
+              >
+                {t("selectPet")}
+              </Label>
+              <p className="text-sm text-muted-foreground text-start">
+                {t("petFor", { name: selectedOwnerName })}
+              </p>
+              <Select
+                value={selectedPetId || ""}
+                onValueChange={handleSelectPet}
+                disabled={isLoadingPets || pets.length === 0}
+              >
+                <SelectTrigger className="w-full text-start" id="pet-select">
+                  <SelectValue placeholder={t("selectPet")} />
+                </SelectTrigger>
+                <SelectContent className="w-full">
+                  {isLoadingPets ? (
+                    <div className="flex items-center gap-2 p-2 rtl:space-x-reverse">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>{t("loadingPets")}</span>
+                    </div>
+                  ) : pets.length === 0 ? (
+                    <div className="p-2 text-center text-sm">{t("noPets")}</div>
+                  ) : (
+                    pets.map((pet) => (
+                      <SelectItem
+                        key={pet.id}
+                        value={pet.id}
+                        className="cursor-pointer text-start"
+                      >
+                        {pet.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 w-full"
+                onClick={handleShowPetForm}
+              >
+                <PlusCircle className="me-2 h-4 w-4" />
+                {t("addNewPet")}
+              </Button>
+            </div>
+          )}
 
           {/* Step 3: Visit Form (only when pet is selected) */}
           {selectedPetId && selectedPetData && (
@@ -481,31 +491,45 @@ export function QuickAddVisitModal({
       </DialogContent>
 
       {/* Add Pet Dialog */}
-      {selectedOwnerId && (
-        <Dialog open={showAddPetDialog} onOpenChange={setShowAddPetDialog}>
+      {showPetForm && selectedOwnerId && (
+        <Dialog open={true} onOpenChange={() => setShowPetForm(false)}>
           <DialogContent
             className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
-            onInteractOutside={(e) => e.preventDefault()}
+            dir="auto"
           >
             <DialogHeader>
-              <DialogTitle>Add New Pet</DialogTitle>
-              <DialogDescription>
-                Add a new pet for this owner
-              </DialogDescription>
+              <DialogTitle className="text-start">{t("addNewPet")}</DialogTitle>
             </DialogHeader>
-
-            <div className="py-4">
-              <PetForm
-                owners={[]} // Not needed since we're using the selectedOwnerId
-                ownerId={selectedOwnerId}
-                onSubmit={handleAddPet}
-                onClose={() => setShowAddPetDialog(false)}
-                isLoading={isCreatingPet}
-              />
-            </div>
+            <PetForm
+              onSubmit={createPet}
+              onClose={() => setShowPetForm(false)}
+              isLoading={isCreatingPet}
+              ownerId={selectedOwnerId}
+              owners={[]}
+            />
           </DialogContent>
         </Dialog>
       )}
     </Dialog>
+  );
+}
+
+export function QuickAddVisitModal({
+  isOpen,
+  onClose,
+}: QuickAddVisitModalProps) {
+  const params = useParams();
+  const locale = params.locale as string;
+
+  // Validate the locale (defaults to 'en' if missing)
+  const validLocale = locale || "en";
+
+  // Get messages directly based on locale
+  const messages = validLocale === "ar" ? arMessages : enMessages;
+
+  return (
+    <NextIntlClientProvider locale={validLocale} messages={messages}>
+      <QuickAddVisitModalContent isOpen={isOpen} onClose={onClose} />
+    </NextIntlClientProvider>
   );
 }

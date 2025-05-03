@@ -4,6 +4,7 @@ import { useForm, ControllerRenderProps } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   Form,
@@ -60,6 +61,8 @@ export function ClinicProfileForm({
   const isAdmin = user?.role === "ADMIN";
   const isClinicAdmin = user?.role === "CLINIC_ADMIN";
   const canEditTimezone = isAdmin || isClinicAdmin;
+  const t = useTranslations("ClinicProfile");
+  const commonT = useTranslations("Common");
 
   const form = useForm<ClinicProfileFormValues>({
     resolver: zodResolver(clinicProfileSchema),
@@ -87,10 +90,10 @@ export function ClinicProfileForm({
             field: ControllerRenderProps<ClinicProfileFormValues, "name">;
           }) => (
             <FormItem className="">
-              <FormLabel className="">Clinic Name</FormLabel>
+              <FormLabel className="">{t("clinicName")}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Enter clinic name"
+                  placeholder={t("clinicName")}
                   className=""
                   type="text"
                   {...field}
@@ -110,10 +113,10 @@ export function ClinicProfileForm({
             field: ControllerRenderProps<ClinicProfileFormValues, "address">;
           }) => (
             <FormItem className="">
-              <FormLabel className="">Address</FormLabel>
+              <FormLabel className="">{t("clinicAddress")}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Enter clinic address"
+                  placeholder={t("clinicAddress")}
                   className=""
                   type="text"
                   {...field}
@@ -133,10 +136,10 @@ export function ClinicProfileForm({
             field: ControllerRenderProps<ClinicProfileFormValues, "phone">;
           }) => (
             <FormItem className="">
-              <FormLabel className="">Phone Number</FormLabel>
+              <FormLabel className="">{t("clinicPhone")}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Enter phone number"
+                  placeholder={t("clinicPhone")}
                   className=""
                   type="tel"
                   {...field}
@@ -158,14 +161,14 @@ export function ClinicProfileForm({
               field: ControllerRenderProps<ClinicProfileFormValues, "timezone">;
             }) => (
               <FormItem>
-                <FormLabel>Clinic Timezone</FormLabel>
+                <FormLabel>{t("clinicTimezone")}</FormLabel>
                 <Select
                   defaultValue={field.value}
                   onValueChange={field.onChange}
                 >
                   <FormControl>
                     <SelectTrigger className="">
-                      <SelectValue placeholder="Select timezone" />
+                      <SelectValue placeholder={t("clinicTimezone")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="">
@@ -196,8 +199,8 @@ export function ClinicProfileForm({
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  Determines the clinic&apos;s operational &apos;day&apos; for
-                  stats/reminders.
+                  {t("clinicTimezoneDescription") ||
+                    "Determines the clinic's operational 'day' for stats/reminders."}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -212,16 +215,16 @@ export function ClinicProfileForm({
             onClick={onCancel}
             disabled={isLoading}
           >
-            Cancel
+            {commonT("cancel")}
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {t("saving") || "Saving..."}
               </>
             ) : (
-              "Save Changes"
+              commonT("save")
             )}
           </Button>
         </div>

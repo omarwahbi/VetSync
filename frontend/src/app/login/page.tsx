@@ -98,7 +98,7 @@ function LoginForm() {
   // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.push("/dashboard");
+      router.push("/en/dashboard");
     }
   }, [isLoading, isAuthenticated, router]);
 
@@ -145,7 +145,7 @@ function LoginForm() {
 
       if (profileSuccess) {
         toast.success("Login successful! Redirecting to dashboard...");
-        router.push("/dashboard");
+        router.push("/en/dashboard");
       } else {
         // If profile fetch fails, clear the token
         setAccessToken(null);

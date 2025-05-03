@@ -199,7 +199,7 @@ export default function ManageUsersPage() {
   // Role guard - client-side protection
   useEffect(() => {
     if (user && user.role !== "CLINIC_ADMIN") {
-      router.push("/dashboard"); // Redirect non-clinic-admins
+      router.push("/en/dashboard"); // Redirect non-clinic-admins
     }
   }, [user, router]);
 
@@ -384,7 +384,7 @@ export default function ManageUsersPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-end">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -424,7 +424,7 @@ export default function ManageUsersPage() {
                           {userRow.isActive ? "active" : "inactive"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"

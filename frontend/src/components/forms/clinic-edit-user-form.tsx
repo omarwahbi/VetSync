@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useTranslations } from "next-intl";
 
 // Define the user roles enum
 enum UserRole {
@@ -63,6 +64,8 @@ export function ClinicEditUserForm({
   onClose,
   isLoading,
 }: ClinicEditUserFormProps) {
+  const t = useTranslations("ManageUsers");
+
   // Initialize form with initial values
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -126,10 +129,10 @@ export function ClinicEditUserForm({
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>First Name</FormLabel>
+                <FormLabel>{t("firstName")}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="First Name"
+                    placeholder={t("firstNamePlaceholder")}
                     disabled={isLoading}
                     {...field}
                   />
@@ -144,10 +147,10 @@ export function ClinicEditUserForm({
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last Name</FormLabel>
+                <FormLabel>{t("lastName")}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Last Name"
+                    placeholder={t("lastNamePlaceholder")}
                     disabled={isLoading}
                     {...field}
                   />
@@ -164,11 +167,9 @@ export function ClinicEditUserForm({
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Account Status</FormLabel>
+                <FormLabel className="text-base">{t("status")}</FormLabel>
                 <FormDescription>
-                  {field.value
-                    ? "User can log in and access the system"
-                    : "User cannot log in to the system"}
+                  {field.value ? t("active") : t("inactive")}
                 </FormDescription>
               </div>
               <FormControl>
@@ -198,16 +199,15 @@ export function ClinicEditUserForm({
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>Clinic Administrator Role</FormLabel>
+                <FormLabel>{t("clinicAdmin")}</FormLabel>
                 <FormDescription>
                   {field.value
-                    ? "User has administrator privileges"
-                    : "User has staff privileges only"}
+                    ? t("clinicAdminDescription")
+                    : t("staffDescription")}
                 </FormDescription>
                 {initialData.role === UserRole.CLINIC_ADMIN && (
                   <p className="text-amber-600 text-sm mt-2">
-                    Note: Demoting clinic administrators is not supported.
-                    Please contact system administrator.
+                    {t("demoteAdminNote")}
                   </p>
                 )}
               </div>
@@ -222,13 +222,13 @@ export function ClinicEditUserForm({
             onClick={onClose}
             disabled={isLoading}
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading ? (
-              <LoadingSpinner size="sm" text="Saving..." />
+              <LoadingSpinner size="sm" text={t("saving")} />
             ) : (
-              "Save Changes"
+              t("saveChanges")
             )}
           </Button>
         </div>

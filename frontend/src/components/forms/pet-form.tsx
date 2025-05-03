@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useForm, ControllerRenderProps } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 import {
   Loader2,
   Calendar as CalendarIcon,
@@ -54,7 +56,7 @@ interface Owner {
   phone: string;
 }
 
-// Define validation schema creator with hard-coded English strings
+// Define validation schema creator with translated error messages
 const createPetSchema = (errorMessages: Record<string, string>) =>
   z.object({
     name: z.string().min(1, {
@@ -91,26 +93,32 @@ export function PetForm({
   ownerId,
   hideButtons = false,
 }: PetFormProps) {
+  const t = useTranslations("PetForm");
+  const commonT = useTranslations("Common");
+  const params = useParams();
+  const locale = params.locale as string;
+  const isRTL = locale === "ar";
+
   const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
 
-  // Create gender and species options with hardcoded English strings
+  // Create gender and species options with translated strings
   const genderOptions = [
-    { value: "male", label: "Male", icon: Users },
-    { value: "female", label: "Female", icon: Users },
-    { value: "unknown", label: "Unknown", icon: Users },
+    { value: "male", label: t("genderOptions.male"), icon: Users },
+    { value: "female", label: t("genderOptions.female"), icon: Users },
+    { value: "unknown", label: t("genderOptions.unknown"), icon: Users },
   ];
 
   const speciesOptions = [
-    { value: "dog", label: "Dog", icon: Dog },
-    { value: "cat", label: "Cat", icon: Cat },
-    { value: "bird", label: "Bird", icon: Bird },
-    { value: "other", label: "Other", icon: FileText },
+    { value: "dog", label: t("speciesOptions.dog"), icon: Dog },
+    { value: "cat", label: t("speciesOptions.cat"), icon: Cat },
+    { value: "bird", label: t("speciesOptions.bird"), icon: Bird },
+    { value: "other", label: t("speciesOptions.other"), icon: FileText },
   ];
 
-  // Create validation schema with English error messages
+  // Create validation schema with translated error messages
   const petSchema = createPetSchema({
-    nameRequired: "Pet name is required",
-    speciesRequired: "Species is required",
+    nameRequired: t("nameRequired"),
+    speciesRequired: t("speciesRequired"),
   });
 
   const form = useForm<PetFormValues>({
@@ -148,6 +156,7 @@ export function PetForm({
         id="pet-form"
         onSubmit={form.handleSubmit(handleSubmit)}
         className="space-y-4"
+        dir={isRTL ? "rtl" : "ltr"}
       >
         {/* Owner Selection - Only show if ownerId prop is not provided */}
         {!ownerId && (
@@ -160,25 +169,33 @@ export function PetForm({
               field: ControllerRenderProps<PetFormValues, "ownerId">;
             }) => (
               <FormItem className="w-full">
-                <FormLabel className="flex items-center gap-1">
+                <FormLabel className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  Owner <span className="text-red-500">*</span>
+                  {t("owner")} <span className="text-red-500">*</span>
                 </FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
                 >
                   <FormControl className="w-full">
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select an owner" />
+                    <SelectTrigger
+                      className={`w-full ${isRTL ? "text-right" : "text-left"}`}
+                    >
+                      <SelectValue placeholder={t("selectOwner")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="w-full">
                     <div className="flex items-center border-b px-3 py-2">
-                      <Search className="me-2 h-4 w-4 shrink-0 opacity-50" />
+                      <Search
+                        className={`${
+                          isRTL ? "ml-2" : "mr-2"
+                        } h-4 w-4 shrink-0 opacity-50`}
+                      />
                       <input
-                        placeholder="Search for an owner"
-                        className="flex h-8 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder={t("searchOwner")}
+                        className={`flex h-8 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 ${
+                          isRTL ? "text-right" : "text-left"
+                        }`}
                         value={ownerSearchQuery}
                         onChange={(e) => setOwnerSearchQuery(e.target.value)}
                       />
@@ -189,20 +206,22 @@ export function PetForm({
                           <SelectItem
                             key={owner.id}
                             value={owner.id}
-                            className="flex py-2"
+                            className={`flex py-2 ${
+                              isRTL ? "text-right" : "text-left"
+                            }`}
                           >
                             {owner.firstName} {owner.lastName}
                           </SelectItem>
                         ))
                       ) : (
                         <div className="py-6 text-center text-sm">
-                          No owners found
+                          {t("noOwnersFound")}
                         </div>
                       )}
                     </div>
                   </SelectContent>
                 </Select>
-                <FormMessage className="w-full" />
+                <FormMessage className={isRTL ? "text-right" : "text-left"} />
               </FormItem>
             )}
           />
@@ -217,19 +236,19 @@ export function PetForm({
             field: ControllerRenderProps<PetFormValues, "name">;
           }) => (
             <FormItem className="w-full">
-              <FormLabel className="flex items-center gap-1">
+              <FormLabel className="flex items-center gap-2">
                 <Cat className="h-4 w-4" />
-                Pet Name <span className="text-red-500">*</span>
+                {t("petName")} <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl className="w-full">
                 <Input
                   type="text"
-                  className="w-full"
-                  placeholder="Enter pet name"
+                  className={`w-full ${isRTL ? "text-right" : "text-left"}`}
+                  placeholder={t("petNamePlaceholder")}
                   {...field}
                 />
               </FormControl>
-              <FormMessage className="w-full" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
@@ -243,14 +262,16 @@ export function PetForm({
             field: ControllerRenderProps<PetFormValues, "species">;
           }) => (
             <FormItem className="w-full">
-              <FormLabel className="flex items-center gap-1">
+              <FormLabel className="flex items-center gap-2">
                 <Dog className="h-4 w-4" />
-                Species <span className="text-red-500">*</span>
+                {t("species")} <span className="text-red-500">*</span>
               </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl className="w-full">
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select species" />
+                  <SelectTrigger
+                    className={`w-full ${isRTL ? "text-right" : "text-left"}`}
+                  >
+                    <SelectValue placeholder={t("selectSpecies")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent className="w-full">
@@ -258,15 +279,17 @@ export function PetForm({
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className="flex items-center gap-2"
+                      className={isRTL ? "text-right" : "text-left"}
                     >
-                      <option.icon className="h-4 w-4" />
-                      {option.label}
+                      <div className="flex items-center gap-2">
+                        <option.icon className="h-4 w-4" />
+                        {option.label}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage className="w-full" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
@@ -280,20 +303,20 @@ export function PetForm({
             field: ControllerRenderProps<PetFormValues, "breed">;
           }) => (
             <FormItem className="w-full">
-              <FormLabel className="flex items-center gap-1">
+              <FormLabel className="flex items-center gap-2">
                 <Dog className="h-4 w-4" />
-                Breed
+                {t("breed")}
               </FormLabel>
               <FormControl className="w-full">
                 <Input
                   type="text"
-                  className="w-full"
-                  placeholder="Enter breed"
+                  className={`w-full ${isRTL ? "text-right" : "text-left"}`}
+                  placeholder={t("breedPlaceholder")}
                   {...field}
                   value={field.value || ""}
                 />
               </FormControl>
-              <FormMessage className="w-full" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
@@ -307,14 +330,16 @@ export function PetForm({
             field: ControllerRenderProps<PetFormValues, "gender">;
           }) => (
             <FormItem className="w-full">
-              <FormLabel className="flex items-center gap-1">
+              <FormLabel className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Gender
+                {t("gender")}
               </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select gender" />
+                <FormControl className="w-full">
+                  <SelectTrigger
+                    className={`w-full ${isRTL ? "text-right" : "text-left"}`}
+                  >
+                    <SelectValue placeholder={t("selectGender")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent className="w-full">
@@ -322,15 +347,17 @@ export function PetForm({
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className="flex items-center gap-2"
+                      className={isRTL ? "text-right" : "text-left"}
                     >
-                      <option.icon className="h-4 w-4" />
-                      {option.label}
+                      <div className="flex items-center gap-2">
+                        <option.icon className="h-4 w-4" />
+                        {option.label}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage className="w-full" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
@@ -343,34 +370,42 @@ export function PetForm({
           }: {
             field: ControllerRenderProps<PetFormValues, "birthDate">;
           }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel className="flex items-center gap-1">
+            <FormItem className="w-full">
+              <FormLabel className="flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4" />
-                Date of Birth
+                {t("birthDate")}
               </FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
-                      variant="outline"
+                      variant={"outline"}
                       className={cn(
                         "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
+                        !field.value && "text-muted-foreground",
+                        isRTL && "text-right pr-3 pl-auto"
                       )}
                     >
                       {field.value ? (
-                        format(field.value, "MMMM d, yyyy")
+                        format(field.value, "PPP")
                       ) : (
-                        <span>Select date</span>
+                        <span>{t("selectDate")}</span>
                       )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      <CalendarIcon
+                        className={`${
+                          isRTL ? "mr-auto ml-2" : "ml-auto mr-2"
+                        } h-4 w-4 opacity-50`}
+                      />
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent
+                  className="w-auto p-0"
+                  align={isRTL ? "end" : "start"}
+                >
                   <Calendar
                     mode="single"
-                    selected={field.value ?? undefined}
+                    selected={field.value || undefined}
                     onSelect={field.onChange}
                     disabled={(date) =>
                       date > new Date() || date < new Date("1900-01-01")
@@ -379,7 +414,7 @@ export function PetForm({
                   />
                 </PopoverContent>
               </Popover>
-              <FormMessage />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
@@ -393,45 +428,56 @@ export function PetForm({
             field: ControllerRenderProps<PetFormValues, "notes">;
           }) => (
             <FormItem className="w-full">
-              <FormLabel className="flex items-center gap-1">
+              <FormLabel className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Notes
+                {t("notes")}
               </FormLabel>
               <FormControl className="w-full">
                 <Textarea
-                  placeholder="Additional information about the pet"
-                  className="resize-none min-h-[80px]"
+                  placeholder={t("notesPlaceholder")}
                   {...field}
+                  value={field.value || ""}
+                  className={`w-full resize-none min-h-[100px] ${
+                    isRTL ? "text-right" : "text-left"
+                  }`}
                 />
               </FormControl>
-              <FormMessage className="w-full" />
+              <FormMessage className={isRTL ? "text-right" : "text-left"} />
             </FormItem>
           )}
         />
 
         {!hideButtons && (
-          <div className="flex justify-end gap-2 pt-4">
+          <div
+            className={`flex ${
+              isRTL ? "justify-start" : "justify-end"
+            } gap-2 pt-4`}
+          >
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
-              className="flex items-center gap-2"
             >
-              <X className="h-4 w-4" />
-              Cancel
+              <X className={`h-4 w-4 ${isRTL ? "ml-2" : "mr-2"}`} />
+              {t("cancel")}
             </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex items-center gap-2"
-            >
+            <Button type="submit" disabled={isLoading}>
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2
+                    className={`h-4 w-4 animate-spin ${
+                      isRTL ? "ml-2" : "mr-2"
+                    }`}
+                  />
+                  {commonT("saving")}
+                </>
               ) : (
-                <Save className="h-4 w-4" />
+                <>
+                  <Save className={`h-4 w-4 ${isRTL ? "ml-2" : "mr-2"}`} />
+                  {initialData ? t("updatePet") : t("savePet")}
+                </>
               )}
-              Save
             </Button>
           </div>
         )}

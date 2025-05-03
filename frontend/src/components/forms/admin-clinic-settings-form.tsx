@@ -355,7 +355,7 @@ export function AdminClinicSettingsForm({
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full pl-3 text-left font-normal",
+                          "w-full pl-3 text-start font-normal",
                           !field.value && "text-muted-foreground"
                         )}
                       >
@@ -406,7 +406,7 @@ export function AdminClinicSettingsForm({
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full pl-3 text-left font-normal",
+                          "w-full pl-3 text-start font-normal",
                           !field.value && "text-muted-foreground"
                         )}
                       >

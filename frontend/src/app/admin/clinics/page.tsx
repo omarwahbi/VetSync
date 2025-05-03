@@ -92,12 +92,12 @@ const fetchClinics = async ({
   if (isActive !== undefined) params.isActive = isActive;
 
   const response = await axiosInstance.get("/admin/clinics", { params });
-  
+
   // Handle both new and old API response formats
   if (response.data.data && response.data.meta) {
     return response.data;
   }
-  
+
   // If the old format (just an array), convert to expected format
   const clinics = Array.isArray(response.data) ? response.data : [];
   return {
@@ -107,8 +107,8 @@ const fetchClinics = async ({
       itemCount: clinics.length,
       itemsPerPage: clinics.length,
       totalPages: 1,
-      currentPage: 1
-    }
+      currentPage: 1,
+    },
   };
 };
 
@@ -221,7 +221,6 @@ export default function AdminClinicsPage() {
   const [isCreateClinicOpen, setIsCreateClinicOpen] = useState(false);
   const [isEditClinicOpen, setIsEditClinicOpen] = useState(false);
   const [editingClinic, setEditingClinic] = useState<Clinic | null>(null);
-  const [deletingClinic, setDeletingClinic] = useState<Clinic | null>(null);
 
   // Use debounced search term to prevent frequent API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -256,14 +255,6 @@ export default function AdminClinicsPage() {
     },
     [searchParams]
   );
-
-  // Function to clear all filters
-  const handleClearFilters = () => {
-    setSearchTerm("");
-    setStatusFilter("ALL");
-    setPage(1);
-    router.push(pathname, { scroll: false });
-  };
 
   // Update URL when state changes
   useEffect(() => {
@@ -303,7 +294,6 @@ export default function AdminClinicsPage() {
     isLoading: isLoadingClinics,
     isError: isClinicsError,
     error: clinicsError,
-    refetch: refetchClinics,
   } = useQuery({
     queryKey: ["adminClinics", page, debouncedSearchTerm, statusFilter],
     queryFn: () =>
@@ -375,8 +365,9 @@ export default function AdminClinicsPage() {
     setIsEditClinicOpen(true);
   };
 
+  // Render the component
   return (
-    <>
+    <div>
       <Card className="bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl flex items-center gap-2">
@@ -388,6 +379,7 @@ export default function AdminClinicsPage() {
             Add New Clinic
           </Button>
         </CardHeader>
+
         <CardContent className="p-0">
           {isLoadingClinics ? (
             <div className="flex justify-center py-8">
@@ -400,189 +392,209 @@ export default function AdminClinicsPage() {
               </p>
             </div>
           ) : clinics.length > 0 ? (
-            <Table className="w-full">
-              <TableCaption className="text-sm text-muted-foreground">
-                List of all registered clinics on the platform
-              </TableCaption>
-              <TableHeader className="bg-muted/50">
-                <TableRow className="hover:bg-muted/50">
-                  <TableHead className="font-medium">Name</TableHead>
-                  <TableHead className="font-medium">Status</TableHead>
-                  <TableHead className="font-medium">Timezone</TableHead>
-                  <TableHead className="font-medium">Reminder Limit</TableHead>
-                  <TableHead className="font-medium">Sent This Cycle</TableHead>
-                  <TableHead className="font-medium">
-                    Current Cycle Start
-                  </TableHead>
-                  <TableHead className="font-medium">Sub Start</TableHead>
-                  <TableHead className="font-medium">Sub End</TableHead>
-                  <TableHead className="font-medium text-right">
-                    Owner Count
-                  </TableHead>
-                  <TableHead className="font-medium text-right">
-                    Pet Count
-                  </TableHead>
-                  <TableHead className="font-medium text-right">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y">
-                {clinics.map((clinic: Clinic) => (
-                  <TableRow key={clinic.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">{clinic.name}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          clinic.isActive
-                            ? "bg-green-100 text-green-800 hover:bg-green-100"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                        }
-                      >
-                        {clinic.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {clinic.timezone || "UTC"}
-                    </TableCell>
-                    <TableCell>
-                      {!clinic.canSendReminders ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-red-100 text-red-800 hover:bg-red-100"
-                        >
-                          Disabled (System)
-                        </Badge>
-                      ) : clinic.reminderMonthlyLimit === -1 ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-blue-100 text-blue-800 hover:bg-blue-100"
-                        >
-                          Unlimited
-                        </Badge>
-                      ) : clinic.reminderMonthlyLimit === 0 ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-gray-100 text-gray-800 hover:bg-gray-100"
-                        >
-                          Disabled (Limit)
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {clinic.reminderMonthlyLimit} / cycle
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {renderReminderUsage(
-                        clinic.reminderSentThisCycle,
-                        clinic.reminderMonthlyLimit,
-                        clinic.canSendReminders
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {clinic.currentCycleStartDate
-                        ? format(
-                            new Date(clinic.currentCycleStartDate),
-                            "dd-MM-yyyy"
-                          )
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {clinic.subscriptionStartDate
-                        ? format(
-                            new Date(clinic.subscriptionStartDate),
-                            "dd-MM-yyyy"
-                          )
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {clinic.subscriptionEndDate
-                        ? format(
-                            new Date(clinic.subscriptionEndDate),
-                            "dd-MM-yyyy"
-                          )
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {clinic.ownerCount ?? 0}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {clinic.petCount ?? 0}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleEditClick(clinic)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                    </TableCell>
+            <>
+              <Table className="w-full">
+                <TableCaption className="text-sm text-muted-foreground">
+                  List of all registered clinics on the platform
+                </TableCaption>
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-muted/50">
+                    <TableHead className="font-medium">Name</TableHead>
+                    <TableHead className="font-medium">Status</TableHead>
+                    <TableHead className="font-medium">Timezone</TableHead>
+                    <TableHead className="font-medium">
+                      Reminder Limit
+                    </TableHead>
+                    <TableHead className="font-medium">
+                      Sent This Cycle
+                    </TableHead>
+                    <TableHead className="font-medium">
+                      Current Cycle Start
+                    </TableHead>
+                    <TableHead className="font-medium">Sub Start</TableHead>
+                    <TableHead className="font-medium">Sub End</TableHead>
+                    <TableHead className="font-medium text-end">
+                      Owner Count
+                    </TableHead>
+                    <TableHead className="font-medium text-end">
+                      Pet Count
+                    </TableHead>
+                    <TableHead className="font-medium text-end">
+                      Actions
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            
-            {/* Add pagination controls */}
-            {meta && meta.totalPages > 1 && (
-              <div className="px-6 py-4 border-t">
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground">
-                    Showing page {meta.currentPage} of {meta.totalPages} ({meta.totalItems} total clinics)
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const newPage = Math.max(1, page - 1);
-                        setPage(newPage);
-                        
-                        // Directly update URL to trigger the API call
-                        const paramsToUpdate = {
-                          page: newPage === 1 ? undefined : newPage,
-                          search: debouncedSearchTerm || undefined,
-                          status: statusFilter === 'ALL' ? undefined : statusFilter,
-                        };
-                        
-                        const queryString = createQueryString(paramsToUpdate);
-                        router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
-                      }}
-                      disabled={page <= 1}
-                    >
-                      Previous
-                    </Button>
-                    <div className="text-sm">
-                      Page {page} of {meta.totalPages}
+                </TableHeader>
+                <TableBody className="divide-y">
+                  {clinics.map((clinic: Clinic) => (
+                    <TableRow key={clinic.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        {clinic.name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            clinic.isActive
+                              ? "bg-green-100 text-green-800 hover:bg-green-100"
+                              : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                          }
+                        >
+                          {clinic.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {clinic.timezone || "UTC"}
+                      </TableCell>
+                      <TableCell>
+                        {!clinic.canSendReminders ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-red-100 text-red-800 hover:bg-red-100"
+                          >
+                            Disabled (System)
+                          </Badge>
+                        ) : clinic.reminderMonthlyLimit === -1 ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-blue-100 text-blue-800 hover:bg-blue-100"
+                          >
+                            Unlimited
+                          </Badge>
+                        ) : clinic.reminderMonthlyLimit === 0 ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-gray-100 text-gray-800 hover:bg-gray-100"
+                          >
+                            Disabled (Limit)
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            {clinic.reminderMonthlyLimit} / cycle
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {renderReminderUsage(
+                          clinic.reminderSentThisCycle,
+                          clinic.reminderMonthlyLimit,
+                          clinic.canSendReminders
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {clinic.currentCycleStartDate
+                          ? format(
+                              new Date(clinic.currentCycleStartDate),
+                              "dd-MM-yyyy"
+                            )
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {clinic.subscriptionStartDate
+                          ? format(
+                              new Date(clinic.subscriptionStartDate),
+                              "dd-MM-yyyy"
+                            )
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {clinic.subscriptionEndDate
+                          ? format(
+                              new Date(clinic.subscriptionEndDate),
+                              "dd-MM-yyyy"
+                            )
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell className="text-end text-muted-foreground">
+                        {clinic.ownerCount ?? 0}
+                      </TableCell>
+                      <TableCell className="text-end text-muted-foreground">
+                        {clinic.petCount ?? 0}
+                      </TableCell>
+                      <TableCell className="text-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditClick(clinic)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {meta && meta.totalPages > 1 && (
+                <div className="px-6 py-4 border-t">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground">
+                      Showing page {meta.currentPage} of {meta.totalPages} (
+                      {meta.totalItems} total clinics)
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const newPage = Math.min(meta.totalPages, page + 1);
-                        setPage(newPage);
-                        
-                        // Directly update URL to trigger the API call
-                        const paramsToUpdate = {
-                          page: newPage === 1 ? undefined : newPage,
-                          search: debouncedSearchTerm || undefined,
-                          status: statusFilter === 'ALL' ? undefined : statusFilter,
-                        };
-                        
-                        const queryString = createQueryString(paramsToUpdate);
-                        router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
-                      }}
-                      disabled={page >= meta.totalPages}
-                    >
-                      Next
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newPage = Math.max(1, page - 1);
+                          setPage(newPage);
+
+                          // Directly update URL to trigger the API call
+                          const paramsToUpdate = {
+                            page: newPage === 1 ? undefined : newPage,
+                            search: debouncedSearchTerm || undefined,
+                            status:
+                              statusFilter === "ALL" ? undefined : statusFilter,
+                          };
+
+                          const queryString = createQueryString(paramsToUpdate);
+                          router.push(
+                            `${pathname}${
+                              queryString ? `?${queryString}` : ""
+                            }`,
+                            { scroll: false }
+                          );
+                        }}
+                        disabled={page <= 1}
+                      >
+                        Previous
+                      </Button>
+                      <div className="text-sm">
+                        Page {page} of {meta.totalPages}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newPage = Math.min(meta.totalPages, page + 1);
+                          setPage(newPage);
+
+                          // Directly update URL to trigger the API call
+                          const paramsToUpdate = {
+                            page: newPage === 1 ? undefined : newPage,
+                            search: debouncedSearchTerm || undefined,
+                            status:
+                              statusFilter === "ALL" ? undefined : statusFilter,
+                          };
+
+                          const queryString = createQueryString(paramsToUpdate);
+                          router.push(
+                            `${pathname}${
+                              queryString ? `?${queryString}` : ""
+                            }`,
+                            { scroll: false }
+                          );
+                        }}
+                        disabled={page >= meta.totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </>
           ) : (
             <div className="py-8 text-center">
               <p className="text-muted-foreground">
@@ -596,7 +608,7 @@ export default function AdminClinicsPage() {
       {/* Edit Clinic Dialog */}
       <Dialog open={isEditClinicOpen} onOpenChange={setIsEditClinicOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="text-left">
+          <DialogHeader className="text-start">
             <DialogTitle className="text-lg font-semibold">
               Edit Clinic Settings
             </DialogTitle>
@@ -615,7 +627,7 @@ export default function AdminClinicsPage() {
       {/* Create Clinic Dialog */}
       <Dialog open={isCreateClinicOpen} onOpenChange={setIsCreateClinicOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="text-left">
+          <DialogHeader className="text-start">
             <DialogTitle className="text-lg font-semibold">
               Create New Clinic
             </DialogTitle>
@@ -627,6 +639,6 @@ export default function AdminClinicsPage() {
           />
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

@@ -1,6 +1,8 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
 
 interface SimplePaginationProps {
   currentPage: number;
@@ -19,6 +21,10 @@ export function SimplePagination({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const params = useParams();
+  const locale = params.locale as string;
+  const isRTL = locale === "ar";
+  const t = useTranslations("Common");
 
   if (totalPages <= 1) {
     return null;
@@ -44,7 +50,7 @@ export function SimplePagination({
 
   // Generate page numbers to display (show 5 pages max)
   const getPageNumbers = () => {
-    const pageNumbers = [];
+    const pageNumbers: number[] = [];
     const maxPagesToShow = 5;
 
     if (totalPages <= maxPagesToShow) {
@@ -92,7 +98,11 @@ export function SimplePagination({
     <div className="px-6 py-6 border-t">
       <div className="flex flex-col items-center">
         <div className="text-sm text-muted-foreground mb-3">
-          Page {currentPage} of {totalPages} ({totalCount} total)
+          {t("pageXofY", {
+            current: currentPage,
+            total: totalPages,
+            count: totalCount,
+          })}
         </div>
 
         <div className="flex items-center gap-2">
@@ -104,8 +114,8 @@ export function SimplePagination({
             disabled={currentPage === 1}
             className="flex items-center"
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
+            <ChevronLeft className={`h-4 w-4 ${isRTL ? "ms-1" : "me-1"}`} />
+            {t("previous")}
           </Button>
 
           {/* Page numbers */}
@@ -139,8 +149,8 @@ export function SimplePagination({
             disabled={currentPage === totalPages}
             className="flex items-center"
           >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
+            {t("next")}
+            <ChevronRight className={`h-4 w-4 ${isRTL ? "me-1" : "ms-1"}`} />
           </Button>
         </div>
       </div>
