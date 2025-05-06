@@ -17,22 +17,42 @@ async function main() {
   await prisma.clinic.deleteMany();
   console.log('Cleared existing data.');
 
-  // --- Seed Platform Admin ---
-  const adminPassword = 'adminpassword'; // Use a secure one for real dev
-  const hashedAdminPassword = await bcrypt.hash(adminPassword, saltRounds);
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@petwellapp.com' },
-    update: {}, // No updates needed if exists
-    create: {
-      email: 'admin@petwellapp.com',
-      password: hashedAdminPassword,
-      role: UserRole.ADMIN,
-      isActive: true,
-      firstName: 'Platform',
-      lastName: 'Admin',
-    },
-  });
-  console.log(`Created/Found admin user: ${adminUser.email}`);
+  // --- Seed Platform Admin from Environment Variables ---
+  const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@petwellapp.com').toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  const adminFirstName = process.env.SEED_ADMIN_FIRSTNAME || 'Platform';
+  const adminLastName = process.env.SEED_ADMIN_LASTNAME || 'Admin';
+
+  if (!adminEmail || !adminPassword) {
+    console.warn(
+      'SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD not found in environment variables. ' +
+      'Skipping Platform Admin user creation/update.',
+    );
+  } else {
+    console.log(`Attempting to upsert admin user: ${adminEmail}`);
+    const hashedAdminPassword = await bcrypt.hash(adminPassword, saltRounds);
+
+    const adminUser = await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {
+        password: hashedAdminPassword,
+        role: UserRole.ADMIN,
+        isActive: true,
+        firstName: adminFirstName,
+        lastName: adminLastName,
+      },
+      create: {
+        email: adminEmail,
+        password: hashedAdminPassword,
+        role: UserRole.ADMIN,
+        isActive: true,
+        firstName: adminFirstName,
+        lastName: adminLastName,
+        clinicId: null,
+      },
+    });
+    console.log(`Successfully upserted admin user: ${adminUser.email}`);
+  }
 
   // --- Seed Clinics ---
   const clinic1 = await prisma.clinic.upsert({
@@ -69,10 +89,10 @@ async function main() {
   const staff1Password = 'staffpassword1';
   const hashedStaff1Password = await bcrypt.hash(staff1Password, saltRounds);
   await prisma.user.upsert({
-    where: { email: 'staff1@pawsitive.vet' },
+    where: { email: 'staff1@pawsitive.vet'.toLowerCase() },
     update: {},
     create: {
-      email: 'staff1@pawsitive.vet',
+      email: 'staff1@pawsitive.vet'.toLowerCase(),
       password: hashedStaff1Password,
       role: UserRole.STAFF,
       isActive: true,
@@ -86,10 +106,10 @@ async function main() {
   const staff2Password = 'staffpassword2';
   const hashedStaff2Password = await bcrypt.hash(staff2Password, saltRounds);
   await prisma.user.upsert({
-    where: { email: 'staff1@happytails.vet' },
+    where: { email: 'staff1@happytails.vet'.toLowerCase() },
     update: {},
     create: {
-      email: 'staff1@happytails.vet',
+      email: 'staff1@happytails.vet'.toLowerCase(),
       password: hashedStaff2Password,
       role: UserRole.STAFF,
       isActive: true,
@@ -109,9 +129,8 @@ async function main() {
         data: {
           firstName: faker.person.firstName(),
           lastName: faker.person.lastName(),
-          email: faker.internet.email({ 
-            allowSpecialCharacters: false 
-          }).toLowerCase(),
+          email: faker.internet.email()
+            .toLowerCase(),
           phone: faker.phone.number(),
           clinicId: clinic.id,
           allowAutomatedReminders: true, // Default owners to allow reminders

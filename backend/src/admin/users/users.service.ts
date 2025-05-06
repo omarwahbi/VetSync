@@ -17,9 +17,12 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async createUser(createUserDto: CreateUserDto) {
+    // Normalize email to lowercase
+    const lowerCaseEmail = createUserDto.email.toLowerCase();
+
     // Check if user with this email already exists
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: createUserDto.email },
+      where: { email: lowerCaseEmail },
     });
 
     if (existingUser) {
@@ -45,7 +48,7 @@ export class UsersService {
       data: {
         firstName: createUserDto.firstName,
         lastName: createUserDto.lastName,
-        email: createUserDto.email,
+        email: lowerCaseEmail,
         password: hashedPassword,
         role: createUserDto.role as Prisma.UserCreateInput['role'],
         isActive: createUserDto.isActive,
@@ -184,13 +187,17 @@ export class UsersService {
 
     // Check if updating email to one that already exists
     if (updateDto.email && updateDto.email !== existingUser.email) {
+      const lowerCaseEmail = updateDto.email.toLowerCase();
       const emailExists = await this.prisma.user.findUnique({
-        where: { email: updateDto.email },
+        where: { email: lowerCaseEmail },
       });
 
       if (emailExists) {
         throw new ConflictException('Email is already in use by another account');
       }
+      
+      // Use lowercase email in the update
+      updateDto.email = lowerCaseEmail;
     }
 
     // Verify clinic exists if changing clinic assignment

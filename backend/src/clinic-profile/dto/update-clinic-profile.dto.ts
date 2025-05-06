@@ -16,4 +16,8 @@ export class UpdateClinicProfileDto {
   @IsOptional()
   @MaxLength(20)
   phone?: string;
+
+  @IsString()
+  @IsOptional()
+  timezone?: string;
 } 

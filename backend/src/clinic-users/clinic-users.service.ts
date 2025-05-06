@@ -31,9 +31,12 @@ export class ClinicUsersService {
   }
 
   async createUserInClinic(callerUser: User, createUserDto: ClinicCreateUserDto) {
+    // Normalize email to lowercase
+    const lowerCaseEmail = createUserDto.email.toLowerCase();
+    
     // Check if email already exists globally
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: createUserDto.email },
+      where: { email: lowerCaseEmail },
     });
 
     if (existingUser) {
@@ -46,7 +49,7 @@ export class ClinicUsersService {
     // Create the user with STAFF role and the caller's clinicId
     const newUser = await this.prisma.user.create({
       data: {
-        email: createUserDto.email,
+        email: lowerCaseEmail,
         password: hashedPassword,
         firstName: createUserDto.firstName,
         lastName: createUserDto.lastName,

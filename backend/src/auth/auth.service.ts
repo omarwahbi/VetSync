@@ -47,8 +47,11 @@ export class AuthService {
   ): Promise<UserWithoutPassword | null> {
     this.logger.debug(`Attempting to validate user: ${email}`);
     
+    // Normalize email to lowercase for lookup
+    const lowerCaseEmail = email.toLowerCase();
+    
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: lowerCaseEmail },
       include: {
         clinic: {
           select: { 
@@ -296,13 +299,16 @@ export class AuthService {
   async register(data: RegisterDto): Promise<UserWithoutPassword> {
     this.logger.debug(`Attempting to register user: ${data.email}`);
 
+    // Normalize email to lowercase
+    const lowerCaseEmail = data.email.toLowerCase();
+
     // Check if user already exists
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email: lowerCaseEmail },
     });
 
     if (existingUser) {
-      this.logger.error(`Registration failed: User already exists: ${data.email}`);
+      this.logger.error(`Registration failed: User already exists: ${lowerCaseEmail}`);
       throw new UnauthorizedException('User with this email already exists');
     }
 
@@ -320,7 +326,7 @@ export class AuthService {
       // Create new user with hashed password
       const newUser = await this.prisma.user.create({
         data: {
-          email: data.email,
+          email: lowerCaseEmail,
           password: hashedPassword,
           firstName: data.firstName,
           lastName: data.lastName,

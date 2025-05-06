@@ -91,7 +91,7 @@ export class ReminderService {
         startOfToday.getTime() === nextCycleStartDate.getTime()
       ) {
         this.logger.log(
-          `Resetting counter for Clinic ${clinic.id}. Cycle started ${clinic.currentCycleStartDate}, next start was ${nextCycleStartDate}`,
+          `Resetting counter for Clinic ${clinic.id}. Cycle started ${String(clinic.currentCycleStartDate)}, next start was ${String(nextCycleStartDate)}`,
         );
         try {
           await this.prisma.clinic.update({
@@ -103,17 +103,24 @@ export class ReminderService {
           });
           resetCount++;
         } catch (error) {
-           this.logger.error(`Failed to reset counter for clinic ${clinic.id}`, error);
+          this.logger.error(
+            `Failed to reset counter for clinic ${clinic.id}`,
+            error,
+          );
         }
       }
     }
-    this.logger.log(`Reminder cycle reset check complete. Reset counters for ${resetCount} clinics.`);
+    this.logger.log(
+      `Reminder cycle reset check complete. Reset counters for ${resetCount} clinics.`,
+    );
   }
 
   // Run once every day at 1 pm to check for visits in the next 24 hours
   @Cron('0 13 * * *')
   async handleScheduledReminders() {
-    this.logger.log('Running scheduled reminder check for visits in the next 24 hours...');
+    this.logger.log(
+      'Running scheduled reminder check for visits in the next 24 hours...',
+    );
     try {
       // Get current time reference point using UTC internally
       const now = new Date();
@@ -173,7 +180,7 @@ export class ReminderService {
                       reminderMonthlyLimit: true,
                       reminderSentThisCycle: true,
                       currentCycleStartDate: true,
-                    }
+                    },
                   },
                 },
               },
@@ -266,8 +273,11 @@ export class ReminderService {
           : 'soon';
         
         // Format the reminder message with the formatted date and fallbacks
-        const message = `Reminder from ${clinicName}: ${petName}'s ${visitType} visit is due on ${formattedDueDate}. Please call us at ${clinicPhone} to schedule.`;
-        
+        const message = 
+          `عيادة ${clinicName}:\n` +
+                  `لديك زيارة ${visitType} الخاصة بـ${petName} بتاريخ ${formattedDueDate}.\n` +
+                  (clinicPhone ? `رقم العيادة: ${clinicPhone}\n` : '') +  
+                  `*هذه رسالة آلية يرجى عدم الرد*`;
         try {
           // Send the message via Twilio WhatsApp
           const sentMessage = await this.twilioClient.messages.create({
@@ -314,7 +324,9 @@ export class ReminderService {
       }
       
     } catch (error) {
-      this.logger.error(`Error in reminder service: ${(error as Error).message}`);
+      this.logger.error(
+        `Error in reminder service: ${(error as Error).message}`,
+      );
     }
   }
 }
