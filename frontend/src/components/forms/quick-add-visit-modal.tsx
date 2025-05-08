@@ -65,6 +65,7 @@ function QuickAddVisitModalContent({
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [selectedPetData, setSelectedPetData] = useState<Pet | null>(null);
   const [selectedOwnerName, setSelectedOwnerName] = useState<string>("");
+  const [step, setStep] = useState<string>("select_owner");
 
   // Get auth token for checking authentication status
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -261,7 +262,7 @@ function QuickAddVisitModalContent({
       toast.success("Pet added successfully!");
 
       // Close the add pet dialog
-      setShowPetForm(false);
+      setStep("select_pet");
 
       // If we have pet data returned, select it automatically
       if (data && data.id) {
@@ -286,6 +287,7 @@ function QuickAddVisitModalContent({
     setSelectedPetId(null);
     setSelectedPetData(null);
     setSelectedOwnerName("");
+    setStep("select_owner");
     onClose();
   };
 
@@ -330,12 +332,6 @@ function QuickAddVisitModalContent({
     }
   };
 
-  const [showPetForm, setShowPetForm] = useState(false);
-
-  const handleShowPetForm = () => {
-    setShowPetForm(true);
-  };
-
   // Log when component renders
   useEffect(() => {
     if (isOpen) {
@@ -344,173 +340,135 @@ function QuickAddVisitModalContent({
   }, [isOpen, owners.length]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleReset()}>
-      <DialogContent
-        className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
-        onInteractOutside={(e) => e.preventDefault()}
-        dir="auto"
-      >
-        <DialogHeader>
-          <DialogTitle className="text-start">{t("title")}</DialogTitle>
-          <DialogDescription className="text-start">
-            {t("description")}
-          </DialogDescription>
-        </DialogHeader>
+    <div className="max-w-3xl mx-auto">
+      <DialogHeader>
+        <DialogTitle>{t("addNewVisit")}</DialogTitle>
+        <DialogDescription>{t("quickAddDescription")}</DialogDescription>
+      </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Step 1: Owner Selection */}
-          <div className="space-y-2">
-            <Label
-              htmlFor="owner-select"
-              className="text-sm font-medium text-start block"
-            >
-              {t("selectOwner")}
-            </Label>
-            <Select
-              value={selectedOwnerId || ""}
-              onValueChange={handleSelectOwner}
-              disabled={isLoadingOwners || owners.length === 0}
-            >
-              <SelectTrigger className="w-full text-start" id="owner-select">
-                <SelectValue placeholder={t("selectOwner")} />
-              </SelectTrigger>
-              <SelectContent className="w-full">
-                {isLoadingOwners ? (
-                  <div className="flex items-center gap-2 p-2 rtl:space-x-reverse">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{t("loadingOwners")}</span>
-                  </div>
-                ) : owners.length === 0 ? (
-                  <div className="p-2 text-center text-sm">{t("noOwners")}</div>
-                ) : (
-                  owners.map((owner) => (
-                    <SelectItem
-                      key={owner.id}
-                      value={owner.id}
-                      className="cursor-pointer text-start"
-                    >
-                      {`${owner.firstName || ""} ${owner.lastName || ""} (${
-                        owner.phone
-                      })`}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Step 2: Pet Selection */}
-          {selectedOwnerId && (
-            <div className="space-y-2">
-              <Label
-                htmlFor="pet-select"
-                className="text-sm font-medium text-start block"
-              >
-                {t("selectPet")}
-              </Label>
-              <p className="text-sm text-muted-foreground text-start">
-                {t("petFor", { name: selectedOwnerName })}
-              </p>
+      <div className="flex flex-col space-y-4 mt-6 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
+        {step === "select_owner" && (
+          <>
+            <Label>{t("selectOwner")}</Label>
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-[1fr_auto]">
               <Select
-                value={selectedPetId || ""}
-                onValueChange={handleSelectPet}
-                disabled={isLoadingPets || pets.length === 0}
+                value={selectedOwnerId || ""}
+                onValueChange={handleSelectOwner}
+                disabled={isLoadingOwners}
               >
-                <SelectTrigger className="w-full text-start" id="pet-select">
-                  <SelectValue placeholder={t("selectPet")} />
+                <SelectTrigger className="w-full text-start" id="owner-select">
+                  <SelectValue placeholder={t("selectOwner")} />
                 </SelectTrigger>
                 <SelectContent className="w-full">
-                  {isLoadingPets ? (
+                  {isLoadingOwners ? (
                     <div className="flex items-center gap-2 p-2 rtl:space-x-reverse">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>{t("loadingPets")}</span>
+                      <span>{t("loadingOwners")}</span>
                     </div>
-                  ) : pets.length === 0 ? (
-                    <div className="p-2 text-center text-sm">{t("noPets")}</div>
+                  ) : owners.length === 0 ? (
+                    <div className="p-2 text-center text-sm">
+                      {t("noOwners")}
+                    </div>
                   ) : (
-                    pets.map((pet) => (
+                    owners.map((owner) => (
                       <SelectItem
-                        key={pet.id}
-                        value={pet.id}
+                        key={owner.id}
+                        value={owner.id}
                         className="cursor-pointer text-start"
                       >
-                        {pet.name}
+                        {`${owner.firstName || ""} ${owner.lastName || ""} (${
+                          owner.phone
+                        })`}
                       </SelectItem>
                     ))
                   )}
                 </SelectContent>
               </Select>
+            </div>
+          </>
+        )}
 
+        {step === "pet_form" && (
+          <div className="mt-2">
+            <div className="mb-4">
               <Button
-                type="button"
                 variant="outline"
                 size="sm"
-                className="mt-2 w-full"
-                onClick={handleShowPetForm}
+                onClick={() => setStep("select_pet")}
+                className="flex items-center"
               >
-                <PlusCircle className="me-2 h-4 w-4" />
-                {t("addNewPet")}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
+                </svg>
+                {t("back")}
               </Button>
             </div>
-          )}
-
-          {/* Step 3: Visit Form (only when pet is selected) */}
-          {selectedPetId && selectedPetData && (
-            <div className="pt-4">
-              <VisitForm
-                selectedPetData={{
-                  owner: {
-                    allowAutomatedReminders:
-                      selectedPetData.owner?.allowAutomatedReminders,
-                  },
-                }}
-                quickAdd={true}
-                initialData={{
-                  petId: selectedPetId,
-                  pet: {
-                    id: selectedPetId,
-                    name: selectedPetData.name,
-                    owner: {
-                      id: selectedPetData.owner?.id || "",
-                      allowAutomatedReminders:
-                        selectedPetData.owner?.allowAutomatedReminders,
-                    },
-                  },
-                  visitDate: new Date(),
-                  visitType: "",
-                  notes: "",
-                  isReminderEnabled: true,
-                }}
-                onSubmit={handleCreateVisit}
-                onClose={handleReset}
-                isLoading={isCreatingVisit}
-              />
-            </div>
-          )}
-        </div>
-      </DialogContent>
-
-      {/* Add Pet Dialog */}
-      {showPetForm && selectedOwnerId && (
-        <Dialog open={true} onOpenChange={() => setShowPetForm(false)}>
-          <DialogContent
-            className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
-            dir="auto"
-          >
-            <DialogHeader>
-              <DialogTitle className="text-start">{t("addNewPet")}</DialogTitle>
-            </DialogHeader>
             <PetForm
-              onSubmit={createPet}
-              onClose={() => setShowPetForm(false)}
+              onSubmit={handleCreatePet}
+              onClose={() => setStep("select_pet")}
               isLoading={isCreatingPet}
-              ownerId={selectedOwnerId}
-              owners={[]}
+              initialData={{ ownerId: selectedOwnerId || "" }}
             />
-          </DialogContent>
-        </Dialog>
-      )}
-    </Dialog>
+          </div>
+        )}
+
+        {step === "visit_form" && (
+          <div className="mt-2">
+            <div className="mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStep("select_pet")}
+                className="flex items-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
+                </svg>
+                {t("back")}
+              </Button>
+            </div>
+            <VisitForm
+              onSubmit={handleCreateVisit}
+              onClose={onClose}
+              isLoading={isCreatingVisit}
+              initialData={{
+                petId: selectedPetId || "",
+                ownerId: selectedOwnerId || "",
+                ownerName: selectedOwnerName || "",
+                petName: selectedPetData?.name || "",
+                type: "",
+                date: new Date(),
+                notes: "",
+                reminderEnabled:
+                  selectedPetData?.owner?.allowAutomatedReminders ?? true,
+              }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

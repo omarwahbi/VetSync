@@ -1,0 +1,42 @@
+/* Form Responsive Styles */
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+}
+
+.form-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  padding-bottom: 1rem;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+
+.form-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border, #e5e7eb);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+}
+
+/* Fix for iOS Safari viewport height issues */
+@supports (-webkit-touch-callout: none) {
+  .form-content {
+    /* 4rem accounts for common UI elements like headers/toolbars */
+    max-height: calc(100vh - 8rem);
+  }
+  
+  .dialog-content {
+    max-height: calc(100vh - 4rem) !important;
+    padding-bottom: env(safe-area-inset-bottom, 1rem) !important;
+  }
+}
+
+/* Fix for absolutely positioned bottom buttons that might get hidden */
+.form-with-floating-buttons {
+  padding-bottom: 5rem;
+} 

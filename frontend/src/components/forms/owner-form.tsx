@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { ResponsiveForm } from "@/components/ui/responsive-form";
 
 // Define validation schema creator with hard-coded fallbacks
 const createOwnerSchema = (errorMessages: Record<string, string>) =>
@@ -130,11 +131,35 @@ export function OwnerForm({
 
   return (
     <Form {...form}>
-      <form
+      <ResponsiveForm
         id="owner-form"
         onSubmit={form.handleSubmit(handleSubmit)}
         className="space-y-4"
         dir={isRTL ? "rtl" : "ltr"}
+        footer={
+          !hideButtons && (
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onClose}
+                disabled={isLoading}
+              >
+                <X className="mr-2 h-4 w-4" />
+                {t("cancel")}
+              </Button>
+              <Button type="submit" size="sm" disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                {t("save")}
+              </Button>
+            </div>
+          )
+        }
       >
         <FormField
           control={form.control}
@@ -251,65 +276,29 @@ export function OwnerForm({
           )}
         />
 
-        {clinicCanSendReminders && (
-          <FormField
-            control={form.control}
-            name="allowAutomatedReminders"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-2 space-y-0 rounded-md border p-4">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel className="flex items-center gap-2">
-                    <Bell className="h-4 w-4" />
-                    {t("allowReminders")}
-                  </FormLabel>
-                  <FormDescription
-                    className={isRTL ? "text-right" : "text-left"}
-                  >
-                    {t("allowRemindersDescription")}
-                  </FormDescription>
-                </div>
-              </FormItem>
-            )}
-          />
-        )}
-
-        {!hideButtons && (
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              <X className={`h-4 w-4 ${isRTL ? "ml-2" : "mr-2"}`} />
-              {t("cancel")}
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2
-                    className={`h-4 w-4 animate-spin ${
-                      isRTL ? "ml-2" : "mr-2"
-                    }`}
-                  />
-                  {t("saving")}
-                </>
-              ) : (
-                <>
-                  <Save className={`h-4 w-4 ${isRTL ? "ml-2" : "mr-2"}`} />
-                  {initialData ? t("updateOwner") : t("saveOwner")}
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-      </form>
+        <FormField
+          control={form.control}
+          name="allowAutomatedReminders"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rtl:space-x-reverse">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={!clinicCanSendReminders}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  {t("allowReminders")}
+                </FormLabel>
+                <FormDescription>{t("allowRemindersDesc")}</FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
+      </ResponsiveForm>
     </Form>
   );
 }
