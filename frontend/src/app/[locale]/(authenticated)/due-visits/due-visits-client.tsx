@@ -5,11 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { format } from "date-fns";
 import axiosInstance from "@/lib/axios";
 import {
   ArrowLeft,
-  Calendar,
   RefreshCcw,
   Check,
   X,
@@ -18,15 +16,8 @@ import {
   CalendarX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -46,7 +37,6 @@ import {
 import { SimplePagination } from "@/components/owners/SimplePagination";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useDebounce } from "@/lib/hooks/useDebounce";
-import { formatDisplayDate } from "@/lib/utils";
 
 // Constants
 const PAGE_SIZES = [10, 20, 50, 100];
@@ -147,7 +137,6 @@ export function DueVisitsClient() {
   const params = useParams();
   const locale = params.locale as string;
   const t = useTranslations("DueVisits");
-  const commonT = useTranslations("Common");
   const visitsT = useTranslations("Visits");
 
   const router = useRouter();
@@ -165,7 +154,7 @@ export function DueVisitsClient() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Query for fetching due visits
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["dueVisits", page, limit, debouncedSearchTerm, visitType],
     queryFn: () => fetchDueVisits(page, limit, debouncedSearchTerm, visitType),
   });
@@ -204,8 +193,17 @@ export function DueVisitsClient() {
   const formatDate = (dateString: string) => {
     if (!dateString) return "—";
     try {
-      return formatDisplayDate(dateString);
+      // Direct implementation instead of relying on formatDisplayDate
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      // Format displays date like "29-04-2023"
+      // Pad with leading zeros for single-digit days and months
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
     } catch (error) {
+      console.error("Error formatting date:", error);
       return dateString;
     }
   };

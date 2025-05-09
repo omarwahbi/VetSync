@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { format } from "date-fns";
 import Link from "next/link";
 import { useOwner } from "@/hooks/useOwner";
 import { useOwnerMutations } from "@/hooks/useOwnerMutations";
@@ -39,7 +38,7 @@ import {
 } from "@/components/owners/OwnerDialogs";
 import { OwnerFormValues } from "@/hooks/useOwnerMutations";
 import { usePetsByOwner } from "@/hooks/usePets";
-import { cn, formatDisplayDate, formatDisplayDateTime } from "@/lib/utils";
+import { formatDisplayDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface Pet {

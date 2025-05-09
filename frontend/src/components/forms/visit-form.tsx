@@ -96,7 +96,6 @@ export interface VisitFormData extends VisitFormValues {
 
 interface VisitFormProps {
   initialData?: VisitFormData;
-  quickAdd?: boolean;
   onSubmit: (data: VisitFormValues) => void;
   onClose: () => void;
   isLoading?: boolean;
@@ -116,7 +115,6 @@ export function VisitForm({
   isLoading = false,
   selectedPetData,
   hideButtons = false,
-  quickAdd = false,
 }: VisitFormProps) {
   const t = useTranslations("VisitForm");
   const params = useParams();
@@ -299,14 +297,33 @@ export function VisitForm({
   // Format currency for display
   const formatCurrency = (value: number | null | undefined) => {
     if (value === null || value === undefined) return "";
-    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+    // Format with up to 2 decimal places, but only if needed
+    const valueStr = value.toString();
+    const parts = valueStr.split(".");
+
+    // Format the integer part with commas
+    const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+    // Add decimal part if it exists
+    if (parts.length > 1) {
+      return `${integerPart}.${parts[1]}`;
+    }
+
+    return integerPart;
   };
 
   // Parse numeric input removing commas
   const parseNumericInput = (value: string): number | null => {
     if (value === "") return null;
     // Remove all commas before parsing
-    return parseFloat(value.replace(/,/g, ""));
+    const cleanValue = value.replace(/,/g, "");
+    const parsedValue = parseFloat(cleanValue);
+
+    // Check if the parsed value is valid
+    if (isNaN(parsedValue)) return null;
+
+    return parsedValue;
   };
 
   return (
@@ -353,6 +370,7 @@ export function VisitForm({
             <FormItem className="flex flex-col">
               <FormLabel className={isRTL ? "text-right" : "text-left"}>
                 {t("visitType")}
+                <span className="text-red-500 ml-1">*</span>
               </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
@@ -392,8 +410,11 @@ export function VisitForm({
               <FormControl>
                 <Input
                   type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
-                  className={isRTL ? "text-right" : "text-left"}
+                  className={`${
+                    isRTL ? "text-right" : "text-left"
+                  } min-w-[120px] text-center font-mono tabular-nums`}
                   value={formatCurrency(field.value)}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     // Only allow digits, commas, and decimal point
@@ -403,6 +424,7 @@ export function VisitForm({
                       field.onChange(parseNumericInput(value));
                     }
                   }}
+                  onWheel={(e) => e.currentTarget.blur()}
                 />
               </FormControl>
               <FormMessage className={isRTL ? "text-right" : "text-left"} />
@@ -465,20 +487,25 @@ export function VisitForm({
                       {t("weight")}
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        placeholder="5.5"
-                        className={isRTL ? "text-right" : "text-left"}
-                        {...field}
-                        value={field.value !== null ? field.value : ""}
-                        onChange={(e) => {
-                          const value = e.target.value
-                            ? parseFloat(e.target.value)
-                            : null;
-                          field.onChange(value);
-                        }}
-                      />
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="5.5"
+                          className={`${
+                            isRTL ? "text-right" : "text-left"
+                          } min-w-[100px] text-center font-mono tabular-nums`}
+                          value={field.value !== null ? field.value : ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const parsedValue =
+                              value === "" ? null : parseFloat(value);
+                            field.onChange(parsedValue);
+                          }}
+                          onWheel={(e) => e.currentTarget.blur()}
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage
                       className={isRTL ? "text-right" : "text-left"}
@@ -550,19 +577,25 @@ export function VisitForm({
                     {t("heartRate")}
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="120"
-                      className={isRTL ? "text-right" : "text-left"}
-                      {...field}
-                      value={field.value !== null ? field.value : ""}
-                      onChange={(e) => {
-                        const value = e.target.value
-                          ? parseInt(e.target.value)
-                          : null;
-                        field.onChange(value);
-                      }}
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        step="1"
+                        min="0"
+                        placeholder="120"
+                        className={`${
+                          isRTL ? "text-right" : "text-left"
+                        } min-w-[100px] text-center font-mono tabular-nums`}
+                        value={field.value !== null ? field.value : ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const parsedValue =
+                            value === "" ? null : parseInt(value);
+                          field.onChange(parsedValue);
+                        }}
+                        onWheel={(e) => e.currentTarget.blur()}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage className={isRTL ? "text-right" : "text-left"} />
                 </FormItem>
@@ -595,20 +628,26 @@ export function VisitForm({
                         {t("temperature")}
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          placeholder="38.5"
-                          className={isRTL ? "text-right" : "text-left"}
-                          {...field}
-                          value={field.value !== null ? field.value : ""}
-                          onChange={(e) => {
-                            const value = e.target.value
-                              ? parseFloat(e.target.value)
-                              : null;
-                            field.onChange(value);
-                          }}
-                        />
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="50"
+                            placeholder="38.5"
+                            className={`${
+                              isRTL ? "text-right" : "text-left"
+                            } min-w-[100px] text-center font-mono tabular-nums`}
+                            value={field.value !== null ? field.value : ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const parsedValue =
+                                value === "" ? null : parseFloat(value);
+                              field.onChange(parsedValue);
+                            }}
+                            onWheel={(e) => e.currentTarget.blur()}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage
                         className={isRTL ? "text-right" : "text-left"}
@@ -634,19 +673,25 @@ export function VisitForm({
                         {t("respiratoryRate")}
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="24"
-                          className={isRTL ? "text-right" : "text-left"}
-                          {...field}
-                          value={field.value !== null ? field.value : ""}
-                          onChange={(e) => {
-                            const value = e.target.value
-                              ? parseInt(e.target.value)
-                              : null;
-                            field.onChange(value);
-                          }}
-                        />
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="24"
+                            className={`${
+                              isRTL ? "text-right" : "text-left"
+                            } min-w-[100px] text-center font-mono tabular-nums`}
+                            value={field.value !== null ? field.value : ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const parsedValue =
+                                value === "" ? null : parseInt(value);
+                              field.onChange(parsedValue);
+                            }}
+                            onWheel={(e) => e.currentTarget.blur()}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage
                         className={isRTL ? "text-right" : "text-left"}
@@ -669,19 +714,26 @@ export function VisitForm({
                         {t("spo2")}
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="98"
-                          className={isRTL ? "text-right" : "text-left"}
-                          {...field}
-                          value={field.value !== null ? field.value : ""}
-                          onChange={(e) => {
-                            const value = e.target.value
-                              ? parseInt(e.target.value)
-                              : null;
-                            field.onChange(value);
-                          }}
-                        />
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="100"
+                            placeholder="98"
+                            className={`${
+                              isRTL ? "text-right" : "text-left"
+                            } min-w-[100px] text-center font-mono tabular-nums`}
+                            value={field.value !== null ? field.value : ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const parsedValue =
+                                value === "" ? null : parseInt(value);
+                              field.onChange(parsedValue);
+                            }}
+                            onWheel={(e) => e.currentTarget.blur()}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage
                         className={isRTL ? "text-right" : "text-left"}
@@ -794,21 +846,26 @@ export function VisitForm({
                         {t("painScore")}
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="10"
-                          placeholder="0"
-                          className={isRTL ? "text-right" : "text-left"}
-                          {...field}
-                          value={field.value !== null ? field.value : ""}
-                          onChange={(e) => {
-                            const value = e.target.value
-                              ? parseInt(e.target.value)
-                              : null;
-                            field.onChange(value);
-                          }}
-                        />
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="10"
+                            placeholder="0"
+                            className={`${
+                              isRTL ? "text-right" : "text-left"
+                            } min-w-[100px] text-center font-mono tabular-nums`}
+                            value={field.value !== null ? field.value : ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const parsedValue =
+                                value === "" ? null : parseInt(value);
+                              field.onChange(parsedValue);
+                            }}
+                            onWheel={(e) => e.currentTarget.blur()}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage
                         className={isRTL ? "text-right" : "text-left"}

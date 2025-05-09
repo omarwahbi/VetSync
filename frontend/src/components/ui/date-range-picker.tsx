@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Calendar } from "lucide-react";
 import {
   Button as AriaButton,
@@ -41,6 +41,28 @@ export function DateRangePicker({
   const locale = params.locale as string;
   const isRtl = locale === "ar";
   const [isOpen, setIsOpen] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isOpen &&
+        popupRef.current &&
+        !popupRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
   // Convert DateRange to react-aria's format
   const value = dateRange
@@ -88,6 +110,14 @@ export function DateRangePicker({
     };
 
     onChange(newDateRange);
+
+    // Close the calendar when a complete range is selected
+    if (value.start && value.end) {
+      setIsOpen(false);
+      if (onApply) {
+        onApply();
+      }
+    }
   };
 
   const handleClear = () => {
@@ -120,12 +150,13 @@ export function DateRangePicker({
       )}
     >
       <Button
+        ref={buttonRef}
         variant="outline"
         className={cn(
           "w-full justify-start text-start font-normal bg-white dark:bg-muted",
           !dateRange && "text-muted-foreground"
         )}
-        onClick={() => setIsOpen(true)}
+        onClick={() => setIsOpen(!isOpen)}
       >
         <Calendar className="me-2 h-4 w-4" />
         {dateRange?.from ? (
@@ -142,7 +173,10 @@ export function DateRangePicker({
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full start-0 mt-1 z-50 bg-popover rounded-md shadow-md border p-4 w-auto">
+        <div
+          ref={popupRef}
+          className="absolute top-full start-0 mt-1 z-50 bg-popover rounded-md shadow-md border p-4 w-auto"
+        >
           <RangeCalendar
             value={value as RangeValue<DateValue>}
             onChange={handleChange}
@@ -233,10 +267,16 @@ export function DateRangePicker({
               size="sm"
               onClick={handleClear}
               className="text-xs h-7"
+              type="button"
             >
               {t("clear")}
             </Button>
-            <Button size="sm" onClick={handleApply} className="text-xs h-7">
+            <Button
+              size="sm"
+              onClick={handleApply}
+              className="text-xs h-7"
+              type="button"
+            >
               {t("apply")}
             </Button>
           </div>

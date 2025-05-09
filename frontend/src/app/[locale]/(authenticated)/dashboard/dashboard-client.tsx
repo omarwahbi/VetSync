@@ -9,13 +9,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { useQuery } from "@tanstack/react-query";
-import {
-  CalendarClock,
-  Users,
-  PawPrint,
-  CalendarCheck2,
-  Plus,
-} from "lucide-react";
+import { Users, PawPrint, CalendarCheck2, Plus } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -32,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { NewClientWizard } from "@/components/wizards/new-client-wizard";
 import { QuickAddVisitModal } from "@/components/forms/quick-add-visit-modal";
-import { cn, formatDisplayDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 // Use a more direct translation approach for the client component
 import { useTranslations } from "next-intl";
@@ -131,7 +125,17 @@ const formatLocalizedDate = (dateString: string, locale: string): string => {
     }).format(date);
   } catch (error) {
     console.error("Error formatting date with locale:", error);
-    return formatDisplayDate(dateString); // Fall back to the original function
+    // Direct implementation instead of falling back to formatDisplayDate
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    } catch {
+      return dateString;
+    }
   }
 };
 
@@ -184,12 +188,6 @@ export function DashboardClient() {
     stats?.petCount ?? 0
   );
 
-  const upcomingVaccinationCountDisplay = isLoadingStats ? (
-    <LoadingSpinner size="sm" text={t("upcomingVaccinations")} />
-  ) : (
-    stats?.upcomingVaccinationCount ?? 0
-  );
-
   const dueTodayCountDisplay = isLoadingStats ? (
     <Skeleton className="h-8 w-16" />
   ) : (
@@ -233,7 +231,7 @@ export function DashboardClient() {
 
       {/* Only show stats cards for ADMIN and CLINIC_ADMIN users */}
       {userRole !== "STAFF" && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Visits Due Today Card */}
           <Link
             href={`/${locale}/due-visits`}
@@ -294,31 +292,6 @@ export function DashboardClient() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{petCountDisplay}</div>
-                {isErrorStats && (
-                  <p className="text-xs text-red-500">
-                    {t("errorLoadingStats")}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Upcoming Vaccinations Card */}
-          <Link
-            href={`/${locale}/visits?page=1&visitType=vaccination`}
-            className="transition-transform hover:scale-105"
-          >
-            <Card className="bg-white dark:bg-card shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {t("upcomingVaccinations")}
-                </CardTitle>
-                <CalendarClock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {upcomingVaccinationCountDisplay}
-                </div>
                 {isErrorStats && (
                   <p className="text-xs text-red-500">
                     {t("errorLoadingStats")}

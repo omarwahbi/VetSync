@@ -64,7 +64,6 @@ import {
 import { VisitForm, VisitFormValues } from "@/components/forms/visit-form";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { formatDisplayDate } from "@/lib/utils";
 import { QuickAddVisitModal } from "@/components/forms/quick-add-visit-modal";
 
 // Constants
@@ -142,8 +141,17 @@ const fetchVisits = async (
   searchTerm?: string,
   visitType?: string,
   status?: string,
-  dateRange?: DateRange
+  dateRange?: DateRange,
+  reminderDateRange?: DateRange,
+  isReminderEnabled?: boolean
 ): Promise<PaginatedResponse> => {
+  // Debug the input date ranges
+  console.log("fetchVisits input:", {
+    dateRange,
+    reminderDateRange,
+    isReminderEnabled,
+  });
+
   const params: Record<string, string | number | undefined> = {
     page,
     limit,
@@ -159,6 +167,16 @@ const fetchVisits = async (
     endDate: dateRange?.to
       ? dateRange.to.toISOString().split("T")[0]
       : undefined,
+    // Add reminder date range parameters
+    reminderStartDate: reminderDateRange?.from
+      ? reminderDateRange.from.toISOString().split("T")[0]
+      : undefined,
+    reminderEndDate: reminderDateRange?.to
+      ? reminderDateRange.to.toISOString().split("T")[0]
+      : undefined,
+    // Add reminder enabled parameter
+    isReminderEnabled:
+      isReminderEnabled !== undefined ? String(isReminderEnabled) : undefined,
   };
 
   // Remove undefined params
@@ -169,8 +187,15 @@ const fetchVisits = async (
   });
 
   console.log("Fetching visits with params:", params);
-  const response = await axiosInstance.get("/visits/all", { params });
-  return response.data;
+
+  try {
+    const response = await axiosInstance.get("/visits/all", { params });
+    console.log("API response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
 };
 
 // Function to get visit type badge color
@@ -218,13 +243,76 @@ export function VisitsClient() {
     : "ALL";
   const initialSearchTerm = searchParams.get("search") || "";
 
+  // Support both visit date and reminder date filtering
+  const startDateParam = searchParams.get("startDate");
+  const endDateParam = searchParams.get("endDate");
+  const reminderStartDateParam = searchParams.get("reminderStartDate");
+  const reminderEndDateParam = searchParams.get("reminderEndDate");
+  const isReminderEnabledParam = searchParams.get("isReminderEnabled");
+
+  // Debug logs
+  console.log("URL params:", {
+    visitType: rawVisitType,
+    startDate: startDateParam,
+    endDate: endDateParam,
+    reminderStartDate: reminderStartDateParam,
+    reminderEndDate: reminderEndDateParam,
+    isReminderEnabled: isReminderEnabledParam,
+  });
+
+  // Initialize date range from URL if available
+  let initialDateRange: DateRange | undefined = undefined;
+  if (startDateParam) {
+    try {
+      const fromDate = new Date(startDateParam);
+      const toDate = endDateParam ? new Date(endDateParam) : undefined;
+
+      if (!isNaN(fromDate.getTime())) {
+        initialDateRange = {
+          from: fromDate,
+          to: toDate && !isNaN(toDate.getTime()) ? toDate : undefined,
+        };
+      }
+    } catch (error) {
+      console.error("Error parsing visit date range:", error);
+    }
+  }
+
+  // Initialize reminder date range from URL if available
+  let initialReminderDateRange: DateRange | undefined = undefined;
+  if (reminderStartDateParam) {
+    try {
+      const fromDate = new Date(reminderStartDateParam);
+      const toDate = reminderEndDateParam
+        ? new Date(reminderEndDateParam)
+        : undefined;
+
+      if (!isNaN(fromDate.getTime())) {
+        initialReminderDateRange = {
+          from: fromDate,
+          to: toDate && !isNaN(toDate.getTime()) ? toDate : undefined,
+        };
+      }
+    } catch (error) {
+      console.error("Error parsing reminder date range:", error);
+    }
+  }
+
   // State for filters - now initialized from URL params
   const [page, setPage] = useState(initialPage);
   const [limit, setLimit] = useState(20);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [visitType, setVisitType] = useState(initialVisitType);
   const [status, setStatus] = useState("ALL");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(
+    initialDateRange
+  );
+  const [reminderDateRange, setReminderDateRange] = useState<
+    DateRange | undefined
+  >(initialReminderDateRange);
+  const [isReminderEnabled, setIsReminderEnabled] = useState<
+    boolean | undefined
+  >(isReminderEnabledParam ? isReminderEnabledParam === "true" : undefined);
 
   // State for edit/delete
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
@@ -236,6 +324,39 @@ export function VisitsClient() {
 
   // New state for quick add visit modal
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
+
+  // Check localStorage for date range on mount
+  useEffect(() => {
+    console.log("Current dateRange state:", dateRange);
+
+    try {
+      // Only check localStorage if we don't already have a date range from URL params
+      if (!dateRange) {
+        console.log("No dateRange set, checking localStorage");
+        const storedDateRange = localStorage.getItem("visitsDateRange");
+
+        if (storedDateRange) {
+          console.log("Found storedDateRange:", storedDateRange);
+          const parsedRange = JSON.parse(storedDateRange);
+
+          const newDateRange = {
+            from: new Date(parsedRange.from),
+            to: new Date(parsedRange.to),
+          };
+
+          console.log("Setting dateRange from localStorage:", newDateRange);
+          setDateRange(newDateRange);
+
+          // Clear from localStorage after using it
+          localStorage.removeItem("visitsDateRange");
+        } else {
+          console.log("No dateRange in localStorage");
+        }
+      }
+    } catch (error) {
+      console.error("Error reading date range from localStorage:", error);
+    }
+  }, [dateRange]);
 
   // Effect to update URL when filters change
   useEffect(() => {
@@ -251,12 +372,20 @@ export function VisitsClient() {
       params.set("visitType", value);
     }
 
+    // Add date range params if they exist
+    if (dateRange?.from) {
+      params.set("startDate", dateRange.from.toISOString().split("T")[0]);
+    }
+    if (dateRange?.to) {
+      params.set("endDate", dateRange.to.toISOString().split("T")[0]);
+    }
+
     // Update the URL without refreshing the page
     const queryString = params.toString();
     router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {
       scroll: false,
     });
-  }, [page, searchTerm, visitType, pathname, router]);
+  }, [page, searchTerm, visitType, dateRange, pathname, router]);
 
   // Query for fetching visits
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -270,20 +399,52 @@ export function VisitsClient() {
       dateRange?.from?.toISOString().split("T")[0],
       dateRange?.to?.toISOString().split("T")[0],
     ],
-    queryFn: () =>
-      fetchVisits(
+    queryFn: () => {
+      console.log("Starting fetchVisits with params:", {
+        page,
+        limit,
+        searchTerm: debouncedSearchTerm,
+        visitType,
+        status,
+        dateRange: {
+          from: dateRange?.from?.toISOString(),
+          to: dateRange?.to?.toISOString(),
+        },
+      });
+      return fetchVisits(
         page,
         limit,
         debouncedSearchTerm,
         visitType,
         status,
-        dateRange
-      ),
+        dateRange,
+        reminderDateRange,
+        isReminderEnabled
+      );
+    },
   });
 
   // Extract visits and metadata
   const visits = data?.data || [];
   const pagination = data?.pagination;
+
+  // Debug logging
+  useEffect(() => {
+    if (data) {
+      console.log("API returned data:", {
+        totalVisits: data.data.length,
+        pagination: data.pagination,
+        firstVisit: data.data[0]
+          ? {
+              id: data.data[0].id,
+              visitDate: data.data[0].visitDate,
+              visitType: data.data[0].visitType,
+              petName: data.data[0].pet?.name,
+            }
+          : "No visits found",
+      });
+    }
+  }, [data]);
 
   // Handlers for edit and delete operations
   // Function to update a visit
@@ -412,7 +573,14 @@ export function VisitsClient() {
   const formatDate = (dateString: string) => {
     if (!dateString) return "—";
     try {
-      return formatDisplayDate(dateString);
+      // Direct implementation instead of relying on formatDisplayDate
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      // Format displays date like "29-04-2023"
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
     } catch {
       return dateString;
     }

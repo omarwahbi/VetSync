@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Calendar } from "lucide-react";
 import {
   Button as AriaButton,
@@ -39,6 +39,7 @@ export function SingleDatePicker({
   const locale = params.locale as string;
   const isRtl = locale === "ar";
   const [isOpen, setIsOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
 
   // Convert Date to react-aria's format with correct timezone handling
   const value = date
@@ -48,6 +49,26 @@ export function SingleDatePicker({
         date.getDate()
       )
     : null;
+
+  // Handle click outside to close the date picker
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        datePickerRef.current &&
+        !datePickerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
   // Handle change from react-aria component
   const handleChange = (value: DateValue | null) => {
@@ -64,16 +85,26 @@ export function SingleDatePicker({
     );
 
     onChange(newDate);
-    // Don't close the popup when selecting a date to allow for changing selection
+    // Close the popup when selecting a date
+    setIsOpen(false);
   };
 
-  const handleClear = () => {
+  const handleClear = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission
     onChange(undefined);
     setIsOpen(false);
   };
 
-  const handleApply = () => {
+  const handleApply = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission
     setIsOpen(false);
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission
+    if (!isDisabled) {
+      setIsOpen(!isOpen);
+    }
   };
 
   // Format date for display
@@ -88,6 +119,7 @@ export function SingleDatePicker({
 
   return (
     <div
+      ref={datePickerRef}
       className={cn(
         "relative single-date-picker",
         isRtl ? "rtl" : "ltr",
@@ -95,12 +127,13 @@ export function SingleDatePicker({
       )}
     >
       <Button
+        type="button" // Explicitly set type to button to prevent form submission
         variant="outline"
         className={cn(
           "w-full justify-start text-start font-normal bg-white dark:bg-muted",
           !date && "text-muted-foreground"
         )}
-        onClick={() => setIsOpen(true)}
+        onClick={handleButtonClick}
         disabled={isDisabled}
       >
         <Calendar className="me-2 h-4 w-4" />
@@ -213,6 +246,7 @@ export function SingleDatePicker({
           </AriaCalendar>
           <div className="flex items-center justify-between pt-2 border-t mt-2">
             <Button
+              type="button" // Explicitly set type to button to prevent form submission
               variant="ghost"
               size="sm"
               onClick={handleClear}
@@ -220,7 +254,12 @@ export function SingleDatePicker({
             >
               {t("clear")}
             </Button>
-            <Button size="sm" onClick={handleApply} className="text-xs h-7">
+            <Button
+              type="button" // Explicitly set type to button to prevent form submission
+              size="sm"
+              onClick={handleApply}
+              className="text-xs h-7"
+            >
               {t("apply")}
             </Button>
           </div>

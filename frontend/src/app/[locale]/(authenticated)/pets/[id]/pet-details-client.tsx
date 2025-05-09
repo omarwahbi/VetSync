@@ -20,8 +20,6 @@ import {
   Bell,
   BellOff,
   Cake,
-  Diamond,
-  VenetianMask,
   Trash2,
   Loader2,
   SlidersHorizontal,
@@ -439,11 +437,11 @@ export function PetDetailsClient() {
                 <Skeleton className="h-5 w-40" />
               </div>
               <div className="flex items-center">
-                <Diamond className="h-5 w-5 me-2 text-muted-foreground" />
+                <Cake className="h-5 w-5 me-2 text-muted-foreground" />
                 <Skeleton className="h-5 w-32" />
               </div>
               <div className="flex items-center">
-                <VenetianMask className="h-5 w-5 me-2 text-muted-foreground" />
+                <Cake className="h-5 w-5 me-2 text-muted-foreground" />
                 <Skeleton className="h-5 w-32" />
               </div>
               <div className="flex items-center">
@@ -582,14 +580,14 @@ export function PetDetailsClient() {
             </div>
 
             <div className="flex items-center">
-              <Diamond className="h-5 w-5 me-2 text-muted-foreground" />
+              <Cake className="h-5 w-5 me-2 text-muted-foreground" />
               <span className="font-medium me-2">{t("species")}</span>
               <span>{petData.species}</span>
             </div>
 
             {petData.breed && (
               <div className="flex items-center">
-                <VenetianMask className="h-5 w-5 me-2 text-muted-foreground" />
+                <Cake className="h-5 w-5 me-2 text-muted-foreground" />
                 <span className="font-medium me-2">{t("breed")}</span>
                 <span>{petData.breed}</span>
               </div>

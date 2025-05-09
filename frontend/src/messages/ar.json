@@ -511,6 +511,9 @@
     "edit": "تعديل",
     "createUser": "إنشاء مستخدم",
     "deleteUser": "حذف المستخدم",
+    "confirmDeleteUser": "هل أنت متأكد أنك تريد حذف",
+    "confirmDeleteUserGeneric": "هل أنت متأكد أنك تريد حذف هذا الموظف؟",
+    "delete": "حذف",
     "additionalInfo": "معلومات إضافية",
     "created": "تم الإنشاء",
     "lastUpdated": "آخر تحديث",
@@ -530,7 +533,8 @@
     "emailPlaceholder": "staff@example.com",
     "password": "كلمة المرور",
     "creating": "جاري الإنشاء...",
-    "editUserDescription": "تعديل تفاصيل وصلاحيات المستخدم"
+    "editUserDescription": "تعديل تفاصيل وصلاحيات المستخدم",
+    "deleting": "جاري الحذف..."
   },
   "NewClientWizard": {
     "ownerInformation": "معلومات المالك",
@@ -615,6 +619,7 @@
     "sendReminder": "إرسال تذكير للمتابعة",
     "remindersDisabledForClinic": "التذكيرات الآلية معطلة لهذه العيادة",
     "cancel": "إلغاء",
+    "saving": "جارِ الحفظ...",
     "updateVisit": "تحديث الزيارة",
     "addVisit": "إضافة زيارة"
   },
@@ -671,9 +676,11 @@
     "address": "العنوان",
     "addressPlaceholder": "أدخل عنوان العميل",
     "allowReminders": "السماح بالتذكيرات الآلية",
+    "allowRemindersDesc": "السماح بإرسال تذكيرات آلية للمواعيد لهذا العميل عبر البريد الإلكتروني أو الرسائل القصيرة",
     "allowRemindersDescription": "السماح بإرسال تذكيرات آلية للمواعيد لهذا العميل عبر البريد الإلكتروني أو الرسائل القصيرة",
     "cancel": "إلغاء",
     "updateOwner": "تحديث المالك",
-    "saveOwner": "حفظ المالك"
+    "saveOwner": "حفظ المالك",
+    "save": "حفظ"
   }
 }

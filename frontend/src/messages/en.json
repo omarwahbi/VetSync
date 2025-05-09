@@ -460,6 +460,9 @@
     "edit": "Edit",
     "createUser": "Create User",
     "deleteUser": "Delete User",
+    "confirmDeleteUser": "Are you sure you want to delete",
+    "confirmDeleteUserGeneric": "Are you sure you want to delete this staff member?",
+    "delete": "Delete",
     "additionalInfo": "Additional Information",
     "created": "Created",
     "lastUpdated": "Last Updated",
@@ -479,7 +482,8 @@
     "emailPlaceholder": "staff@example.com",
     "password": "Password",
     "creating": "Creating...",
-    "editUserDescription": "Edit user details and permissions"
+    "editUserDescription": "Edit user details and permissions",
+    "deleting": "Deleting..."
   },
   "HomePage": {
     "title": "Welcome to VetSync",
@@ -551,6 +555,8 @@
   "QuickAddVisit": {
     "title": "Add New Visit",
     "description": "Select an owner and pet to create a new visit.",
+    "addNewVisit": "Add New Visit",
+    "quickAddDescription": "Quickly add a visit for an existing pet.",
     "searchOwners": "Search owners",
     "selectOwner": "Select an owner",
     "noOwners": "No owners found. Create a new owner first.",
@@ -614,6 +620,7 @@
     "sendReminder": "Send a reminder for follow-up",
     "remindersDisabledForClinic": "Automated reminders are disabled for this clinic",
     "cancel": "Cancel",
+    "saving": "Saving...",
     "updateVisit": "Update Visit",
     "addVisit": "Add Visit"
   },
@@ -670,9 +677,11 @@
     "address": "Address",
     "addressPlaceholder": "Enter client's address",
     "allowReminders": "Allow Automated Reminders",
+    "allowRemindersDesc": "Allow sending automated appointment reminders to this client via email or SMS",
     "allowRemindersDescription": "Allow sending automated appointment reminders to this client via email or SMS",
     "cancel": "Cancel",
     "updateOwner": "Update Owner",
-    "saveOwner": "Save Owner"
+    "saveOwner": "Save Owner",
+    "save": "Save"
   }
 }

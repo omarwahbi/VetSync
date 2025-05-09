@@ -6,6 +6,17 @@ WORKDIR /app
 FROM base AS deps
 # Copy package.json and package-lock.json
 COPY package*.json ./
+# Install build tools and dependencies needed by canvas on Alpine
+RUN apk add --no-cache --virtual .build-deps \
+  build-base \
+  python3 \
+  g++ \
+  cairo-dev \
+  jpeg-dev \
+  pango-dev \
+  giflib-dev \
+  librsvg-dev && \
+  npm_config_build_from_source=true
 # Install dependencies
 RUN npm ci
 
