@@ -55,16 +55,16 @@ export default function LoginPage() {
   // Only render the actual login component when the component has mounted on the client
   if (!isMounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <Card className="w-full max-w-sm animate-pulse">
           <CardHeader className="space-y-1">
-            <div className="h-6 bg-gray-200 rounded mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-6 bg-muted rounded mb-2"></div>
+            <div className="h-4 bg-muted rounded"></div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="h-10 bg-gray-200 rounded mb-4"></div>
-            <div className="h-10 bg-gray-200 rounded mb-4"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-muted rounded mb-4"></div>
+            <div className="h-10 bg-muted rounded mb-4"></div>
+            <div className="h-10 bg-muted rounded"></div>
           </CardContent>
         </Card>
       </div>
@@ -167,7 +167,7 @@ function LoginForm() {
 
   // Only render the login form if user is not authenticated
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">

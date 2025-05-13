@@ -374,6 +374,8 @@ export function AdminClinicSettingsForm({
                       selected={field.value || undefined}
                       onSelect={field.onChange}
                       initialFocus
+                      className=""
+                      classNames={{}}
                     />
                   </PopoverContent>
                 </Popover>
@@ -425,6 +427,8 @@ export function AdminClinicSettingsForm({
                       selected={field.value || undefined}
                       onSelect={field.onChange}
                       initialFocus
+                      className=""
+                      classNames={{}}
                     />
                   </PopoverContent>
                 </Popover>

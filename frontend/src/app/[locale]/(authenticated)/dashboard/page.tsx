@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import DashboardWrapper from "./dashboard-wrapper";
 
@@ -17,32 +17,36 @@ function DashboardSkeleton() {
   );
 }
 
-export default async function DashboardPage({
-  params,
-}: {
-  params: { locale: string };
-}) {
-  // Wait for params to be available
-  const { locale } = await Promise.resolve(params);
+// Define resolved params type
+interface ResolvedPageParams {
+  locale: string;
+}
+
+// Define the props with Promise-based params
+interface PageProps {
+  params: Promise<ResolvedPageParams>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+// Function to fetch messages
+async function fetchMessages(locale: string) {
+  setRequestLocale(locale);
+  return getMessages();
+}
+
+export default function DashboardPage(props: PageProps) {
+  // Unwrap the promises using React.use()
+  const params = use(props.params);
+
+  // Get the locale from params
+  const { locale } = params;
 
   // Debug the locale being used
   console.log("DashboardPage: Using locale:", locale);
 
-  // Set locale for server component
-  setRequestLocale(locale);
-
   // Get messages to pass to the client component
-  const messages = await getMessages();
-
-  // Debug the loaded messages
-  console.log(
-    "DashboardPage: Messages loaded for Dashboard:",
-    messages.Dashboard
-      ? `${Object.keys(messages.Dashboard).length} keys including '${
-          messages.Dashboard.title
-        }'`
-      : "No Dashboard translations found"
-  );
+  const messagesPromise = fetchMessages(locale);
+  const messages = use(messagesPromise);
 
   return (
     <Suspense fallback={<DashboardSkeleton />}>

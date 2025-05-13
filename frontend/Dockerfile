@@ -28,6 +28,9 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy the rest of the application source code
 COPY . .
 
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} 
+
 # Build the application for production
 ENV NODE_ENV=production
 RUN npm run build

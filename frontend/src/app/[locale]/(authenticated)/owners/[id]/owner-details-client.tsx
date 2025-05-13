@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -39,7 +38,6 @@ import {
 import { OwnerFormValues } from "@/hooks/useOwnerMutations";
 import { usePetsByOwner } from "@/hooks/usePets";
 import { formatDisplayDate } from "@/lib/utils";
-import { toast } from "sonner";
 
 interface Pet {
   id: string;
@@ -195,7 +193,7 @@ export function OwnerDetailsClient() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} dir="auto">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="details">{t("details")}</TabsTrigger>
               <TabsTrigger value="pets">{t("pets")}</TabsTrigger>
@@ -394,25 +392,21 @@ export function OwnerDetailsClient() {
       </Card>
 
       {/* Edit Owner Modal */}
-      {owner && (
-        <EditOwnerDialog
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          owner={owner}
-          onSubmit={handleUpdateOwner}
-          isLoading={isUpdatingOwner}
-        />
-      )}
+      <EditOwnerDialog
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        owner={owner}
+        onSubmit={handleUpdateOwner}
+        isLoading={isUpdatingOwner}
+      />
 
       {/* Delete Owner Modal */}
-      {owner && (
-        <DeleteOwnerDialog
-          owner={owner}
-          onClose={() => setIsDeleteModalOpen(false)}
-          onConfirm={handleDeleteOwner}
-          isLoading={isDeletingOwner}
-        />
-      )}
+      <DeleteOwnerDialog
+        owner={isDeleteModalOpen ? owner : null}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteOwner}
+        isLoading={isDeletingOwner}
+      />
     </div>
   );
 }

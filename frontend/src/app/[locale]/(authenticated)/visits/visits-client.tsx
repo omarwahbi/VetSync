@@ -260,56 +260,39 @@ export function VisitsClient() {
     isReminderEnabled: isReminderEnabledParam,
   });
 
-  // Initialize date range from URL if available
+  // Initialize date ranges
   let initialDateRange: DateRange | undefined = undefined;
-  if (startDateParam) {
-    try {
-      const fromDate = new Date(startDateParam);
-      const toDate = endDateParam ? new Date(endDateParam) : undefined;
-
-      if (!isNaN(fromDate.getTime())) {
-        initialDateRange = {
-          from: fromDate,
-          to: toDate && !isNaN(toDate.getTime()) ? toDate : undefined,
-        };
-      }
-    } catch (error) {
-      console.error("Error parsing visit date range:", error);
-    }
+  if (startDateParam || endDateParam) {
+    initialDateRange = {
+      from: startDateParam ? new Date(startDateParam) : new Date(),
+      to: endDateParam ? new Date(endDateParam) : undefined,
+    };
   }
 
-  // Initialize reminder date range from URL if available
   let initialReminderDateRange: DateRange | undefined = undefined;
-  if (reminderStartDateParam) {
-    try {
-      const fromDate = new Date(reminderStartDateParam);
-      const toDate = reminderEndDateParam
-        ? new Date(reminderEndDateParam)
-        : undefined;
-
-      if (!isNaN(fromDate.getTime())) {
-        initialReminderDateRange = {
-          from: fromDate,
-          to: toDate && !isNaN(toDate.getTime()) ? toDate : undefined,
-        };
-      }
-    } catch (error) {
-      console.error("Error parsing reminder date range:", error);
-    }
+  if (reminderStartDateParam || reminderEndDateParam) {
+    initialReminderDateRange = {
+      from: reminderStartDateParam
+        ? new Date(reminderStartDateParam)
+        : new Date(),
+      to: reminderEndDateParam ? new Date(reminderEndDateParam) : undefined,
+    };
   }
 
-  // State for filters - now initialized from URL params
+  // State for pagination and filtering
   const [page, setPage] = useState(initialPage);
-  const [limit, setLimit] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [visitType, setVisitType] = useState(initialVisitType);
   const [status, setStatus] = useState("ALL");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(
     initialDateRange
   );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [reminderDateRange, setReminderDateRange] = useState<
     DateRange | undefined
   >(initialReminderDateRange);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isReminderEnabled, setIsReminderEnabled] = useState<
     boolean | undefined
   >(isReminderEnabledParam ? isReminderEnabledParam === "true" : undefined);
@@ -392,7 +375,7 @@ export function VisitsClient() {
     queryKey: [
       "visits",
       page,
-      limit,
+      pageSize,
       debouncedSearchTerm,
       visitType,
       status,
@@ -402,7 +385,7 @@ export function VisitsClient() {
     queryFn: () => {
       console.log("Starting fetchVisits with params:", {
         page,
-        limit,
+        pageSize,
         searchTerm: debouncedSearchTerm,
         visitType,
         status,
@@ -413,7 +396,7 @@ export function VisitsClient() {
       });
       return fetchVisits(
         page,
-        limit,
+        pageSize,
         debouncedSearchTerm,
         visitType,
         status,
@@ -848,14 +831,14 @@ export function VisitsClient() {
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
                     <p className="text-sm font-medium">{t("rowsPerPage")}</p>
                     <Select
-                      value={`${limit}`}
+                      value={`${pageSize}`}
                       onValueChange={(value: string) => {
-                        setLimit(Number(value));
+                        setPageSize(Number(value));
                         setPage(1);
                       }}
                     >
                       <SelectTrigger className="h-8 w-[70px] bg-white dark:bg-muted">
-                        <SelectValue placeholder={limit.toString()} />
+                        <SelectValue placeholder={pageSize.toString()} />
                       </SelectTrigger>
                       <SelectContent className="bg-popover">
                         {PAGE_SIZES.map((size) => (

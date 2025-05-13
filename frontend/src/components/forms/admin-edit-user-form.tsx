@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -92,16 +92,19 @@ export function AdminEditUserForm({
     isLoading,
   });
 
-  // Prepare initial form values from user data
-  const defaultValues = {
-    email: initialData.email,
-    firstName: initialData.firstName || "",
-    lastName: initialData.lastName || "",
-    role: initialData.role as "ADMIN" | "CLINIC_ADMIN" | "STAFF",
-    isActive: initialData.isActive,
-    clinicId: initialData.clinic?.id || null,
-    password: "",
-  };
+  // Prepare initial form values from user data with useMemo
+  const defaultValues = useMemo(
+    () => ({
+      email: initialData.email,
+      firstName: initialData.firstName || "",
+      lastName: initialData.lastName || "",
+      role: initialData.role as "ADMIN" | "CLINIC_ADMIN" | "STAFF",
+      isActive: initialData.isActive,
+      clinicId: initialData.clinic?.id || null,
+      password: "",
+    }),
+    [initialData]
+  );
 
   log("Default form values", defaultValues);
 
@@ -139,7 +142,7 @@ export function AdminEditUserForm({
       // Update ref to new value
       prevInitialDataRef.current = initialData;
     }
-  }, [form, initialData.id]); // Only depend on ID, not the entire initialData object
+  }, [form, initialData, defaultValues]); // Add defaultValues to the dependency array
 
   // Handle role selection change
   const handleRoleChange = useCallback(

@@ -9,7 +9,6 @@ import axiosInstance from "@/lib/axios";
 import {
   ArrowLeft,
   RefreshCcw,
-  Check,
   X,
   Search,
   Filter,
@@ -35,7 +34,6 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { SimplePagination } from "@/components/owners/SimplePagination";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 
 // Constants
@@ -105,11 +103,6 @@ const fetchDueVisits = async (
   return response.data;
 };
 
-// Function to mark visit as completed
-const markVisitAsCompletedFn = async (visitId: string): Promise<void> => {
-  await axiosInstance.patch(`/visits/${visitId}/complete`);
-};
-
 // Function to get visit type badge color
 const getVisitTypeBadgeColor = (visitType: string) => {
   switch (visitType.toLowerCase()) {
@@ -146,15 +139,12 @@ export function DueVisitsClient() {
   const [limit, setLimit] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
   const [visitType, setVisitType] = useState("ALL");
-  const [completingVisitId, setCompletingVisitId] = useState<string | null>(
-    null
-  );
 
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Query for fetching due visits
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["dueVisits", page, limit, debouncedSearchTerm, visitType],
     queryFn: () => fetchDueVisits(page, limit, debouncedSearchTerm, visitType),
   });
@@ -162,19 +152,6 @@ export function DueVisitsClient() {
   // Extract visits and metadata
   const visits = data?.data || [];
   const meta = data?.meta;
-
-  // Mutation for marking visit as completed
-  const markVisitAsCompleted = async (visitId: string) => {
-    try {
-      setCompletingVisitId(visitId);
-      await markVisitAsCompletedFn(visitId);
-      refetch();
-    } catch (error) {
-      console.error("Error completing visit:", error);
-    } finally {
-      setCompletingVisitId(null);
-    }
-  };
 
   // Reset page when filters change
   const handleFilterChange = () => {
@@ -264,10 +241,13 @@ export function DueVisitsClient() {
                     handleFilterChange();
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("selectVisitType")} />
+                  <SelectTrigger className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                    <SelectValue
+                      className=""
+                      placeholder={t("selectVisitType")}
+                    />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="">
                     {VISIT_TYPES.map((type) => (
                       <SelectItem
                         key={type}
@@ -318,7 +298,7 @@ export function DueVisitsClient() {
                 <Skeleton className="h-12 w-full" />
               </div>
             </div>
-          ) : isError ? (
+          ) : error ? (
             // Error state
             <div className="py-8 text-center">
               <p className="text-red-500">
@@ -345,7 +325,6 @@ export function DueVisitsClient() {
                     <TableHead>{t("contactInfo")}</TableHead>
                     <TableHead>{t("visitType")}</TableHead>
                     <TableHead>{t("time")}</TableHead>
-                    <TableHead className="text-end">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -378,35 +357,6 @@ export function DueVisitsClient() {
                         </Badge>
                       </TableCell>
                       <TableCell>{formatDate(visit.visitDate)}</TableCell>
-                      <TableCell className="text-end">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              router.push(`/${locale}/visits/${visit.id}`)
-                            }
-                          >
-                            {t("viewDetails")}
-                          </Button>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                            disabled={completingVisitId === visit.id}
-                            onClick={() => markVisitAsCompleted(visit.id)}
-                          >
-                            {completingVisitId === visit.id ? (
-                              <LoadingSpinner size="sm" />
-                            ) : (
-                              <>
-                                <Check className="mr-1 h-4 w-4" />
-                                {t("markComplete")}
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -442,9 +392,12 @@ export function DueVisitsClient() {
                     }}
                   >
                     <SelectTrigger className="h-8 w-[70px]">
-                      <SelectValue placeholder={limit.toString()} />
+                      <SelectValue
+                        className=""
+                        placeholder={limit.toString()}
+                      />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="">
                       {PAGE_SIZES.map((size) => (
                         <SelectItem
                           key={size}

@@ -41,7 +41,7 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
 
   // Generate pagination items with ellipsis if needed
   const generatePaginationItems = () => {
-    const items = [];
+    const items: number[] = [];
 
     // For small number of pages, show all pages
     if (totalPages <= maxDisplayedPages) {

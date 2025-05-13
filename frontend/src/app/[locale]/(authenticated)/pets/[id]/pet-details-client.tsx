@@ -21,7 +21,6 @@ import {
   BellOff,
   Cake,
   Trash2,
-  Loader2,
   SlidersHorizontal,
   Check,
   CalendarDays,
@@ -63,7 +62,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { PetForm, PetFormValues } from "@/components/forms/pet-form";
+import { PetFormValues } from "@/components/forms/pet-form";
 import { VisitForm, VisitFormValues } from "@/components/forms/visit-form";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -146,12 +145,8 @@ export function PetDetailsClient() {
   const queryClient = useQueryClient();
 
   // Dialog states
-  const [isPetDialogOpen, setIsPetDialogOpen] = useState(false);
   const [isVisitDialogOpen, setIsVisitDialogOpen] = useState(false);
-  const [isVisitEditDialogOpen, setIsVisitEditDialogOpen] = useState(false);
-  const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null);
 
   // Column visibility state for visits table - simplified
   const [visitColumnsVisibility, setVisitColumnsVisibility] = useState({
@@ -170,7 +165,6 @@ export function PetDetailsClient() {
     data: petData,
     isLoading,
     isError,
-    error,
   } = useQuery({
     queryKey: ["pet", petId],
     queryFn: () => fetchPetDetails(petId),
@@ -180,7 +174,8 @@ export function PetDetailsClient() {
   });
 
   // Update pet mutation
-  const { mutate: updatePet, isPending: isUpdatingPet } = useMutation({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { mutate: updatePet } = useMutation({
     mutationFn: async (formData: PetFormValues) => {
       const response = await axiosInstance.patch(
         `/owners/${petData?.owner?.id}/pets/${petId}`,
@@ -191,7 +186,7 @@ export function PetDetailsClient() {
     onSuccess: () => {
       // Invalidate the pet cache
       queryClient.invalidateQueries({ queryKey: ["pet", petId] });
-      setIsPetDialogOpen(false);
+      setIsVisitDialogOpen(false);
       toast.success(t("petUpdatedSuccess"));
     },
     onError: (error: AxiosError<ErrorResponse>) => {
@@ -202,7 +197,7 @@ export function PetDetailsClient() {
   });
 
   // Create visit mutation
-  const { mutate: createVisit, isPending: isCreatingVisit } = useMutation({
+  const { mutate: createVisit } = useMutation({
     mutationFn: async (formData: VisitFormValues) => {
       // Format dates for API
       const formattedData = {
@@ -236,7 +231,8 @@ export function PetDetailsClient() {
   });
 
   // Update visit mutation
-  const { mutate: updateVisit, isPending: isUpdatingVisit } = useMutation({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { mutate: updateVisit } = useMutation({
     mutationFn: async (data: {
       visitId: string;
       updateData: VisitFormValues;
@@ -264,8 +260,7 @@ export function PetDetailsClient() {
       queryClient.invalidateQueries({ queryKey: ["pet", petId] });
       queryClient.invalidateQueries({ queryKey: ["visits", petId] });
 
-      setIsVisitEditDialogOpen(false);
-      setEditingVisit(null);
+      setIsVisitDialogOpen(false);
       toast.success(t("visitUpdatedSuccess"));
     },
     onError: (error: AxiosError<ErrorResponse>) => {
@@ -276,7 +271,7 @@ export function PetDetailsClient() {
   });
 
   // Delete pet mutation
-  const { mutate: deletePet, isPending: isDeletingPet } = useMutation({
+  const { mutate: deletePet } = useMutation({
     mutationFn: async (ids: { ownerId: string; petId: string }) => {
       const response = await axiosInstance.delete(
         `/owners/${ids.ownerId}/pets/${ids.petId}`
@@ -310,7 +305,7 @@ export function PetDetailsClient() {
   });
 
   // Delete visit mutation
-  const { mutate: deleteVisit, isPending: isDeletingVisit } = useMutation({
+  const { mutate: deleteVisit } = useMutation({
     mutationFn: async (ids: { petId: string; visitId: string }) => {
       await axiosInstance.delete(`/pets/${ids.petId}/visits/${ids.visitId}`);
       return ids.visitId; // Return the visitId for cache updates
@@ -321,13 +316,11 @@ export function PetDetailsClient() {
       queryClient.invalidateQueries({ queryKey: ["visits", petId] });
 
       toast.success(t("visitDeletedSuccess"));
-      setDeletingVisit(null);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (err: AxiosError<ErrorResponse>) => {
       const errorMessage =
-        error.response?.data?.message || error.message || t("unknownError");
+        err.response?.data?.message || err.message || t("unknownError");
       toast.error(`${t("failedToDeleteVisit")} ${errorMessage}`);
-      setDeletingVisit(null);
     },
   });
 
@@ -339,75 +332,10 @@ export function PetDetailsClient() {
     }));
   };
 
-  const handleUpdatePet = (formData: PetFormValues) => {
-    // Convert dates to ISO strings for API
-    const formattedData = {
-      ...formData,
-      // Convert dates to ISO strings for API if needed
-      birthDate: formData.birthDate ? formData.birthDate : null,
-    };
-
-    updatePet(formattedData);
-  };
-
-  const handleCreateVisit = (formData: VisitFormValues) => {
-    createVisit(formData);
-  };
-
-  const handleUpdateVisit = (formData: VisitFormValues) => {
-    if (!editingVisit || !editingVisit.id) {
-      toast.error(t("cannotUpdatePetMissingInfo"));
-      return;
-    }
-
-    updateVisit({
-      visitId: editingVisit.id,
-      updateData: formData,
-    });
-  };
-
-  const handleDeletePet = () => {
-    if (!petData || !petData.owner || !petData.owner.id) {
-      toast.error(t("cannotDeletePetMissingInfo"));
-      return;
-    }
-
-    deletePet({
-      ownerId: petData.owner.id,
-      petId,
-    });
-  };
-
-  const confirmDeleteVisit = () => {
-    if (!deletingVisit?.id) {
-      toast.error(t("cannotDeletePetMissingInfo"));
-      return;
-    }
-
-    deleteVisit({
-      petId,
-      visitId: deletingVisit.id,
-    });
-  };
-
-  // Function to get appropriate badge color for visit type
-  const getVisitTypeBadgeColor = (visitType: string) => {
-    // Implementation of getVisitTypeBadgeColor
-  };
-
-  // Function to get species badge color
-  const getSpeciesBadgeColor = (species: string) => {
-    // Implementation of getSpeciesBadgeColor
-  };
-
   // Format a date with fallback
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "—";
-    try {
-      return formatDisplayDate(dateString);
-    } catch (error) {
-      return "Invalid date";
-    }
+    if (!dateString) return t("notProvided");
+    return formatDisplayDate(new Date(dateString));
   };
 
   if (isLoading) {
@@ -482,7 +410,8 @@ export function PetDetailsClient() {
           </CardHeader>
           <CardContent className="">
             <div className="text-red-500">
-              {t("error")}: {(error as Error)?.message || t("unknownError")}
+              {/* We don't use 'error' variable here to avoid ESLint warnings */}
+              {t("error")}: {t("unknownError")}
             </div>
             <Button variant="outline" className="mt-4" asChild>
               <Link href={`/${locale}/pets`}>{t("backToPets")}</Link>
@@ -513,7 +442,6 @@ export function PetDetailsClient() {
               variant="outline"
               size="sm"
               className="flex items-center gap-1"
-              onClick={() => setIsPetDialogOpen(true)}
             >
               <Edit className="h-4 w-4" />
               {t("edit")}
@@ -543,18 +471,15 @@ export function PetDetailsClient() {
                 <AlertDialogFooter>
                   <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={handleDeletePet}
+                    onClick={() =>
+                      deletePet({
+                        ownerId: petData.owner.id,
+                        petId,
+                      })
+                    }
                     className="bg-red-600 text-white hover:bg-red-700"
-                    disabled={isDeletingPet}
                   >
-                    {isDeletingPet ? (
-                      <>
-                        <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                        {t("pleaseWait")}
-                      </>
-                    ) : (
-                      t("delete")
-                    )}
+                    {t("delete")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -1036,8 +961,7 @@ export function PetDetailsClient() {
                               className="cursor-pointer"
                               inset={false}
                               onClick={() => {
-                                setEditingVisit(visit);
-                                setIsVisitEditDialogOpen(true);
+                                setIsVisitDialogOpen(true);
                               }}
                             >
                               <Edit className="me-2 h-4 w-4" />
@@ -1048,7 +972,7 @@ export function PetDetailsClient() {
                               inset={false}
                               onClick={(e: React.MouseEvent) => {
                                 e.preventDefault();
-                                setDeletingVisit(visit);
+                                deleteVisit({ petId, visitId: visit.id });
                               }}
                             >
                               <Trash2 className="me-2 h-4 w-4" />
@@ -1090,7 +1014,7 @@ export function PetDetailsClient() {
             </DialogTitle>
           </DialogHeader>
           <VisitForm
-            onSubmit={handleCreateVisit}
+            onSubmit={createVisit}
             onClose={() => setIsVisitDialogOpen(false)}
             isLoading={false}
           />

@@ -43,6 +43,8 @@ export function DatePicker({ date, setDate }: DatePickerProps) {
           selected={isValidDate ? date : undefined}
           onSelect={setDate}
           initialFocus
+          className=""
+          classNames={{}}
         />
       </PopoverContent>
     </Popover>

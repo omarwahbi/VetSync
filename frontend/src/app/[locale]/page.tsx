@@ -1,8 +1,21 @@
 import { redirect } from "next/navigation";
+import { use } from "react";
 
-export default async function Home({ params }: { params: { locale: string } }) {
+interface ResolvedPageParams {
+  locale: string;
+}
+
+export default function Home({
+  params,
+}: {
+  params: Promise<ResolvedPageParams>;
+}) {
+  // Unwrap the params promise
+  const resolvedParams = use(params);
+  const { locale } = resolvedParams;
+
   // Redirect to the authenticated dashboard route for the current locale
-  redirect(`/${params.locale}/dashboard`);
+  redirect(`/${locale}/dashboard`);
 }
 
 // Tell Next.js about all the possible locale values

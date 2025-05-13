@@ -205,6 +205,8 @@ export function AdminCreateClinicForm({
                       selected={field.value || undefined}
                       onSelect={field.onChange}
                       initialFocus
+                      className=""
+                      classNames={{}}
                     />
                   </PopoverContent>
                 </Popover>

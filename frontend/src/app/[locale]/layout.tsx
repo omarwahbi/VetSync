@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
+import { use } from "react";
 
 import "../globals.css";
 import { ErrorBoundaryWrapper } from "@/components/ErrorBoundaryWrapper";
@@ -23,18 +24,23 @@ const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
   display: "swap",
 });
 
+interface ResolvedPageParams {
+  locale: string;
+}
+
 type Props = {
   children: React.ReactNode;
-  params: Promise<{ locale: string }>;
+  params: Promise<ResolvedPageParams>;
 };
 
 export async function generateMetadata({
   params,
 }: {
-  params: { locale: string };
+  params: Promise<ResolvedPageParams>;
 }): Promise<Metadata> {
   // Get the locale from params
-  const { locale } = await Promise.resolve(params);
+  const resolvedParams = await params;
+  const { locale } = resolvedParams;
   const isRtl = locale === "ar";
 
   return {
@@ -67,9 +73,20 @@ export async function generateMetadata({
   };
 }
 
-export default async function LocaleLayout({ children, params }: Props) {
-  // Await the params before using them
-  const { locale } = await params;
+// Function to load messages
+async function loadMessages(locale: string) {
+  try {
+    return (await import(`../../messages/${locale}.json`)).default;
+  } catch (error) {
+    console.error(`Failed to load messages for locale ${locale}:`, error);
+    notFound();
+  }
+}
+
+export default function LocaleLayout({ children, params }: Props) {
+  // Unwrap the promise with use()
+  const resolvedParams = use(params);
+  const { locale } = resolvedParams;
 
   // Enable static rendering with the locale
   setRequestLocale(locale);
@@ -79,13 +96,8 @@ export default async function LocaleLayout({ children, params }: Props) {
   }
 
   // Load messages for this locale
-  let messages;
-  try {
-    messages = (await import(`../../messages/${locale}.json`)).default;
-  } catch (error) {
-    console.error(`Failed to load messages for locale ${locale}:`, error);
-    notFound();
-  }
+  const messagesPromise = loadMessages(locale);
+  const messages = use(messagesPromise);
 
   // Determine direction for wrapper
   const isRtl = locale === "ar";

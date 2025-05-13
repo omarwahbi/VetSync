@@ -114,18 +114,25 @@ const getTranslatedVisitType = (
 const formatLocalizedDate = (dateString: string, locale: string): string => {
   try {
     const date = new Date(dateString);
-    // Use the browser's Intl API for locale-aware date formatting
-    // Changed formatting to use numeric (2-digit) format for consistency with other parts of the app
-    return new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      // Force a specific format pattern to match dd-MM-yyyy
-      formatMatcher: "basic",
-    }).format(date);
+    if (isNaN(date.getTime())) return "Invalid Date";
+
+    // For Arabic locale
+    if (locale === "ar") {
+      return new Intl.DateTimeFormat("ar-EG", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(date);
+    }
+
+    // For English and other locales, ensure day-month-year format
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
   } catch (error) {
-    console.error("Error formatting date with locale:", error);
-    // Direct implementation instead of falling back to formatDisplayDate
+    console.error("Error formatting date:", error);
+    // Fallback direct implementation
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return "Invalid Date";
